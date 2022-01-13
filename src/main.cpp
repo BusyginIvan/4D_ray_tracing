@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include "controls.h"
+
 using namespace sf;
 
 int w = 1132, h = 700; // Размеры окна.
@@ -9,7 +10,7 @@ RenderWindow window(VideoMode(w, h), "Ray tracing", Style::Titlebar | Style::Clo
 int frames_still = 1; // Номер кадра с тех пор, как камера неподвижна.
 
 int main() {
-  window.setPosition(sf::Vector2i(200, 50));
+  window.setPosition(Vector2i(200, 50));
   window.setFramerateLimit(60); // Максимальное FPS.
   controls_init();
 
@@ -29,7 +30,7 @@ int main() {
     while (window.pollEvent(event))
       handle_event(event);
 
-    if (mouseHidden) {
+    if (mouse_hidden) {
       move();
 
       shader.setUniform("seed", rand());

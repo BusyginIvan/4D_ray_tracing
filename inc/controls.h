@@ -10,7 +10,7 @@ struct view_drct {
   Vector3f right;
 };
 
-extern bool mouseHidden;
+extern bool mouse_hidden;
 extern Vector3f focus;
 extern struct view_drct view_drct;
 

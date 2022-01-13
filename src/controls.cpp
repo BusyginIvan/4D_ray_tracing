@@ -4,8 +4,7 @@
 #include "util.h"
 using namespace sf;
 
-bool mouseHidden = true;
-
+bool mouse_hidden = true;
 
 // Всё, что касается мышки и поворота камеры.
 
@@ -88,7 +87,7 @@ void handle_event(Event event) {
       window.close();
       break;
     case Event::MouseMoved:
-      if (mouseHidden) {
+      if (mouse_hidden) {
         int dx = event.mouseMove.x - w / 2, dy = h / 2 - event.mouseMove.y;
         if (abs(dx) > scr_size - 10 || dy > scr_size - 10)
           Mouse::setPosition(Vector2i(w / 2, h / 2), window);
@@ -101,13 +100,13 @@ void handle_event(Event event) {
       break;
     case Event::MouseButtonPressed:
       window.setMouseCursorVisible(false);
-      mouseHidden = true;
+      mouse_hidden = true;
       Mouse::setPosition(Vector2i(w / 2, h / 2), window);
       break;
     case Event::KeyPressed:
       if (event.key.code == Keyboard::Escape) {
         window.setMouseCursorVisible(true);
-        mouseHidden = false;
+        mouse_hidden = false;
       } else
         handle_key(event, true);
       break;
