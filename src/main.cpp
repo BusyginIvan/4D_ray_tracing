@@ -1,16 +1,18 @@
 #include <SFML/Graphics.hpp>
 #include "controls.h"
+#include "util.h"
 
 using namespace sf;
+using namespace sf::Glsl;
 
-int w = 1132, h = 700; // Размеры окна.
-//int w = 810, h = 500;
+//int w = 1132, h = 700; // Размеры окна.
+int w = 810, h = 500;
 
 RenderWindow window(VideoMode(w, h), "Ray tracing", Style::Titlebar | Style::Close);
 int frames_still = 1; // Номер кадра с тех пор, как камера неподвижна.
 
 int main() {
-  window.setPosition(Vector2i(200, 50));
+  window.setPosition(Ivec2(200, 50));
   window.setFramerateLimit(60); // Максимальное FPS.
   controls_init();
 
@@ -21,8 +23,8 @@ int main() {
   shader.loadFromFile("../src/shader.frag", Shader::Fragment);
 
   float mtr_height = 1.0f; // Половина высоты матрицы (виртуального экрана в пространстве).
-  shader.setUniform("resolution", Vector2f(w, h));
-  shader.setUniform("mtr_sizes", Vector2f(mtr_height / h * w, mtr_height));
+  shader.setUniform("resolution", Vec2(w, h));
+  shader.setUniform("mtr_sizes", Vec2(mtr_height / h * w, mtr_height));
 
   while (window.isOpen())
   {
@@ -39,7 +41,7 @@ int main() {
 
       if (frames_still == 1) {
         shader.setUniform("focus", focus);
-        shader.setUniform("vec_to_mtr", view_drct.forward);
+        shader.setUniform("vec_to_mtr", mul_vn(view_drct.forward, 1.5f));
         shader.setUniform("top_drct", view_drct.top);
         shader.setUniform("right_drct", view_drct.right);
       }
