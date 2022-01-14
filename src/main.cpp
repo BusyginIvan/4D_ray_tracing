@@ -6,24 +6,27 @@ using namespace sf;
 using namespace sf::Glsl;
 
 //int w = 1132, h = 700; // Размеры окна.
-int w = 810, h = 500;
+int w = 810, h = 501;
 
 RenderWindow window(VideoMode(w, h), "Ray tracing", Style::Titlebar | Style::Close);
 int frames_still = 1; // Номер кадра с тех пор, как камера неподвижна.
 
 int main() {
+  int pixel_size = 3;
+
   window.setPosition(Ivec2(200, 50));
   window.setFramerateLimit(60); // Максимальное FPS.
   controls_init();
 
-  RenderTexture texture; texture.create(w, h);
+  RenderTexture texture; texture.create(w / pixel_size, h / pixel_size);
   Sprite sprite = Sprite(texture.getTexture());
+  sprite.setScale(pixel_size, pixel_size);
 
   Shader shader;
   shader.loadFromFile("../src/shader.frag", Shader::Fragment);
 
   float mtr_height = 1.0f; // Половина высоты матрицы (виртуального экрана в пространстве).
-  shader.setUniform("resolution", Vec2(w, h));
+  shader.setUniform("resolution", Vec2(w / pixel_size, h / pixel_size));
   shader.setUniform("mtr_sizes", Vec2(mtr_height / h * w, mtr_height));
 
   while (window.isOpen())

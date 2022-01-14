@@ -190,7 +190,7 @@ const vec3 sky_color = vec3(0.001, 0.001, 0.002);
 
 const space[1] spaces = space[1](
   //plane(vec3(0, 0, -1.5), vec3(0, 0, 1), properties(0, 0.5, vec3(100.0f/255, 55.0f/255, 36.0f/255)))
-  space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0), properties(0, 0.5, vec3(1.0, 0.2, 0.2)))
+  space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0), properties(0, 0.9, vec3(1.0, 0.2, 0.2)))
 );
 
 const sphere[2] spheres = sphere[2](
@@ -259,7 +259,7 @@ vec4 ray_drct() {
 }
 
 // Преобразование цвета. Фильтр, чтобы не было темно.
-const float c = 100; // С увеличением этой константы усиливается эффект.
+const float c = 120; // С увеличением этой константы усиливается эффект.
 vec3 tone_mapping(vec3 color) {
   return (color * c * (1 + color / c)) / (1 + color * c);
 }
@@ -273,7 +273,7 @@ void main() {
   scr_coord = vec2(scr_coord.x / resolution.x, scr_coord.y / resolution.y);
 
   vec3 new_color = vec3(0);
-  int samples = 40;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
+  int samples = 60;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
   vec4 ray_drct = ray_drct();
   for(int i = 0; i < samples; i++)
     new_color += trace(focus, ray_drct);
