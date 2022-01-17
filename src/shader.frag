@@ -153,10 +153,9 @@ intersection space_intersection(space space, vec4 coord, vec4 drct) {
 // Инициализация объектов сцены.
 
 // В этот цвет в итоге окрашиваются все лучи, улетевшие в пустоту.
-const vec3 sky_color = vec3(0.001, 0.001, 0.002);
+const vec3 sky_color = vec3(0.0002, 0.0002, 0.0004);
 
 const space[1] spaces = space[1](
-  //space(vec4(0, 0, -6, 0), vec4(0, 0, 1, 0), properties(0, 0.9, vec3(1.0, 0.2, 0.2)))
   space(vec4(0, 0, -6, 0), vec4(0, 0, 1, 0), properties(0, 0.9, vec3(0.5, 0.3, 0.15)))
 );
 
@@ -172,6 +171,8 @@ const sphere[10] spheres = sphere[10](
   sphere(vec4( 1.18, -3.5 ,  1.12, -2.78), 1.117, properties(1, 0.944, vec3(0.903, 0.682, 0.45 ))),
   sphere(vec4( -1.4,  1.13, -0.63,  4.02), 1.198, properties(0, 0.06 , vec3(0.97 , 0.667, 0.653))),
   sphere(vec4( 1.71, -3.29, -2.9 , -1.42), 0.629, properties(0, 0.315, vec3(0.608, 0.364, 0.325)))
+  /*sphere(vec4( 0,     0   ,  0   ,  0   ), 1.0  , properties(0, 0.7  , vec3(0.2  , 1.0  , 0.2  ))),
+  sphere(vec4( 2,     0   ,  0   ,  0   ), 0.5  , properties(1, 0.0  , vec3(1.0  , 1.0  , 1.0  )))*/
 );
 
 
@@ -238,7 +239,7 @@ vec4 ray_drct() {
 }
 
 // Преобразование цвета. Фильтр, чтобы не было темно.
-const float c = 200; // С увеличением этой константы усиливается эффект.
+const float c = 300; // С увеличением этой константы усиливается эффект.
 vec3 tone_mapping(vec3 color) {
   return (color * c * (1 + color / c)) / (1 + color * c);
 }

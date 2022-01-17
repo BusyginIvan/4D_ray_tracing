@@ -40,9 +40,9 @@ static void build_view_drct() {
     .right   = Vec4(1, 0, 0, 0),
     .w_drct  = Vec4(0, 0, 0, 1)
   };
-  rotate(sph_view_drct.psi, &view_drct.forward, &view_drct.w_drct);
-  rotate(sph_view_drct.fi, &view_drct.right, &view_drct.forward);
-  rotate(sph_view_drct.te, &view_drct.forward, &view_drct.top);
+  rotate(sph_view_drct.psi, &view_drct.forward, &view_drct.w_drct );
+  rotate(sph_view_drct.fi , &view_drct.right  , &view_drct.forward);
+  rotate(sph_view_drct.te , &view_drct.forward, &view_drct.top    );
 }
 
 // Поворот камеры (взора).
@@ -56,7 +56,7 @@ static void change_view_drct(float d_psi, float d_te, float d_fi) {
 // Всё, что касается клавиатуры и перемещения.
 
 Vec4 focus = Vec4(0, -5, 0, 0); // Точка за матрицей (виртуальным экраном), откуда летят лучи.
-static float speed = 0.06f;     // Скорость перемещения.
+static float speed = 0.12f;     // Скорость перемещения.
 
 static struct {
   bool forward = false;  bool back  = false;
