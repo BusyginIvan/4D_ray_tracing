@@ -150,29 +150,27 @@ intersection space_intersection(space space, vec4 coord, vec4 drct) {
 }
 
 
+// Солнце.
+struct sun_properties {
+  vec4 drct;
+  float angular_size;
+  vec3 color;
+};
+
+
 // Инициализация объектов сцены.
 
-// В этот цвет в итоге окрашиваются все лучи, улетевшие в пустоту.
-const vec3 sky_color = vec3(0.0002, 0.0002, 0.0004);
+const vec3 sky_color = vec3(0.001, 0.001, 0.003);
+
+const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), pi / 25, vec3(1, 1, 0.1));
 
 const space[1] spaces = space[1](
-  space(vec4(0, 0, -6, 0), vec4(0, 0, 1, 0), properties(0, 0.9, vec3(0.5, 0.3, 0.15)))
+  space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0), properties(0, 0, vec3(0.6, 0.4, 0.2)))
 );
 
-const sphere[10] spheres = sphere[10](
-  //           x      y      z      w      r               свет  зерк       r      g      b
-  sphere(vec4( 0.49,  0.93,  2.15,  3.44), 1.103, properties(1, 0.545, vec3(0.847, 0.424, 0.624))),
-  sphere(vec4( 1.46, -1.16, -0.62, -2.02), 1.392, properties(0, 0.964, vec3(0.273, 0.383, 0.478))),
-  sphere(vec4( 2.92,  3.12,  0.29, -0.2 ), 1.068, properties(0, 0.926, vec3(0.836, 0.071, 0.337))),
-  sphere(vec4(-4.13,  1.48, -4.8 , -1.32), 1.333, properties(1, 0.778, vec3(0.14 , 0.87 , 0.87 ))),
-  sphere(vec4( 4.79, -0.26,  2.99,  3.01), 0.961, properties(0, 0.781, vec3(0.679, 0.118, 0.721))),
-  sphere(vec4( 1.4 ,  0.82, -3.57,  0.37), 1.445, properties(0, 0.522, vec3(0.106, 0.415, 0.474))),
-  sphere(vec4(-2.35, -3.14,  2.74,  2.37), 0.956, properties(0, 0.568, vec3(0.135, 0.019, 0.324))),
-  sphere(vec4( 1.18, -3.5 ,  1.12, -2.78), 1.117, properties(1, 0.944, vec3(0.903, 0.682, 0.45 ))),
-  sphere(vec4( -1.4,  1.13, -0.63,  4.02), 1.198, properties(0, 0.06 , vec3(0.97 , 0.667, 0.653))),
-  sphere(vec4( 1.71, -3.29, -2.9 , -1.42), 0.629, properties(0, 0.315, vec3(0.608, 0.364, 0.325)))
-  /*sphere(vec4( 0,     0   ,  0   ,  0   ), 1.0  , properties(0, 0.7  , vec3(0.2  , 1.0  , 0.2  ))),
-  sphere(vec4( 2,     0   ,  0   ,  0   ), 0.5  , properties(1, 0.0  , vec3(1.0  , 1.0  , 1.0  )))*/
+const sphere[2] spheres = sphere[2](
+  sphere(vec4(0, 0, 0, 0), 1.0 , properties(0, 0.7, vec3(0.2, 1.0, 0.2))),
+  sphere(vec4(2, 0, 0, 0), 0.5 , properties(1, 0.0, vec3(1, 1, 1)))
 );
 
 
@@ -183,6 +181,14 @@ const uint reflections_number = 6;   // Максимальное количес�
 vec4 redirect(vec4 vec, vec4 norm) {  // Отражение вектора, если он смотрит внутрь поверхности.
   float dot = dot(vec, norm);
   return dot >= 0 ? vec : vec - 2 * dot * norm;
+}
+
+float v_cos(vec4 v1, vec4 v2) {       // Косинус угла между векторами.
+  return dot(v1, v2) / length(v1) / length(v2);
+}
+
+float angle(vec4 v1, vec4 v2) {       // Угол между векторами.
+  return acos(v_cos(v1, v2));
 }
 
 // Трассировка луча. Возвращает цвет.
@@ -198,7 +204,10 @@ vec3 trace(vec4 coord, vec4 drct) {
       inter = near(inter, space_intersection(spaces[i], coord, drct));
 
     if (!inter.valid) {  // Если нет пересечения, добавляем цвет неба.
-      res_color += rem_color * sky_color;
+      if (angle(drct, sun.drct) < sun.angular_size)
+        res_color += rem_color * sun.color;
+      else
+        res_color += rem_color * sky_color;
       return res_color;
     }
 
@@ -239,7 +248,7 @@ vec4 ray_drct() {
 }
 
 // Преобразование цвета. Фильтр, чтобы не было темно.
-const float c = 300; // С увеличением этой константы усиливается эффект.
+const float c = 200; // С увеличением этой константы усиливается эффект.
 vec3 tone_mapping(vec3 color) {
   return (color * c * (1 + color / c)) / (1 + color * c);
 }
@@ -253,7 +262,7 @@ void main() {
   scr_coord = vec2(scr_coord.x / resolution.x, scr_coord.y / resolution.y);
 
   vec3 new_color = vec3(0);
-  int samples = 60;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
+  int samples = 70;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
   vec4 ray_drct = ray_drct();
   for(int i = 0; i < samples; i++)
     new_color += trace(focus, ray_drct);
