@@ -1,5 +1,4 @@
 #include <SFML/Graphics.hpp>
-#include <iostream>
 #include <random>
 #include "controls.h"
 #include "util.h"
@@ -8,17 +7,16 @@ using namespace sf;
 using namespace sf::Glsl;
 using namespace std;
 
-//int w = 1132, h = 700; // Размеры окна.
-static const int w = 324, h = 200;
-static const int pixel_size = 3;
+static const int w = 324, h = 200; // Размер области отображения в клеточках (крупных пикселях).
+static const int pixel_size = 3;   // Размер одной клеточки в пикселях.
 
 int real_w = w * pixel_size, real_h = h * pixel_size;
 RenderWindow window(VideoMode(real_w, real_h), "Ray tracing", Style::Titlebar | Style::Close);
 int frames_still = 1; // Номер кадра с тех пор, как камера неподвижна.
 
 int main() {
-  window.setPosition(Ivec2(200, 50));
-  window.setFramerateLimit(60); // Максимальное FPS.
+  window.setPosition(Ivec2(200, 50)); // Положение окна.
+  window.setFramerateLimit(60);       // Максимальное FPS.
   controls_init();
 
   RenderTexture texture; texture.create(w, h);

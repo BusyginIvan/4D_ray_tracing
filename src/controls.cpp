@@ -1,27 +1,30 @@
 #include "controls.h"
-#include <iostream>
 #include "main.h"
 #include "util.h"
 
 using namespace sf;
 using namespace sf::Glsl;
-using namespace std;
 
 bool mouse_hidden = true;
 static const int half_w = real_w / 2, half_h = real_h / 2;
 
 // Всё, что касается мышки и поворота камеры.
 
+// Это чтобы не было резкого скачка, когда мышка входит в окно. Максимальное смещение курсора от центра.
 static const int max_mouse_deflection = max(min(half_w, half_h) - 10, 50);
+// Чувствительность мышки. Изменение угла поворота камеры при смещении курсора на один пиксель.
 static const float mouse_sensitivity = pi/2 / 300;
-static const float wheel_sensitivity = pi/2 / 40;
+// Чувствительность колёсика. Изменение угла поворота камеры при повороте колёсика на единицу.
+static const float wheel_sensitivity = pi/2 / 40 ;
 
-struct view_drct view_drct;
-
-static struct sph_drct4 sph_view_drct = {
+// Углы, задающие ориентацию камеры (наблюдателя) в пространстве.
+static struct sph_drct sph_view_drct = {
   .psi = 0, .te = 0, .fi = 0
 };
+// Единичные векторы, характеризующие положение наблюдателя: куда он смотрит, где у него право, верх...
+struct view_drct view_drct;
 
+// Поворот двух осей относительно плоскости, содержащей две другие оси.
 static void rotate(float angle, Vec4* const x, Vec4* const y) {
   const float sin_a = sin(angle), cos_a = cos(angle);
   const Vec4 old_x = *x, old_y = *y;
@@ -29,6 +32,7 @@ static void rotate(float angle, Vec4* const x, Vec4* const y) {
   *y = sum(mul_vn(old_x, -sin_a), mul_vn(old_y, cos_a));
 }
 
+// Построение направляющих по углам поворота камеры.
 static void build_view_drct() {
   view_drct = {
     .forward = Vec4(0, 1, 0, 0),
@@ -36,14 +40,14 @@ static void build_view_drct() {
     .right   = Vec4(1, 0, 0, 0),
     .w_drct  = Vec4(0, 0, 0, 1)
   };
-
   rotate(sph_view_drct.psi, &view_drct.forward, &view_drct.w_drct);
   rotate(sph_view_drct.fi, &view_drct.right, &view_drct.forward);
   rotate(sph_view_drct.te, &view_drct.forward, &view_drct.top);
 }
 
+// Поворот камеры (взора).
 static void change_view_drct(float d_psi, float d_te, float d_fi) {
-  change_sph_drct4(&sph_view_drct, d_psi, d_te, d_fi);
+  change_sph_drct(&sph_view_drct, d_psi, d_te, d_fi);
   build_view_drct();
   frames_still = 1;
 }
@@ -51,8 +55,8 @@ static void change_view_drct(float d_psi, float d_te, float d_fi) {
 
 // Всё, что касается клавиатуры и перемещения.
 
-Vec4 focus = Vec4(1, -3, 0, 0);
-static float speed = 0.06f;
+Vec4 focus = Vec4(0, -5, 0, 0); // Точка за матрицей (виртуальным экраном), откуда летят лучи.
+static float speed = 0.06f;     // Скорость перемещения.
 
 static struct {
   bool forward = false;  bool back  = false;
