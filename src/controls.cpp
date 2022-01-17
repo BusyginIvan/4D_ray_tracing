@@ -8,64 +8,44 @@ using namespace sf::Glsl;
 using namespace std;
 
 bool mouse_hidden = true;
+static const int half_w = real_w / 2, half_h = real_h / 2;
 
 // Всё, что касается мышки и поворота камеры.
 
-static const int scr_size = min(w, h) / 2;
+static const int max_mouse_deflection = max(min(half_w, half_h) - 10, 50);
 static const float mouse_sensitivity = pi/2 / 300;
-static const float wheel_sensitivity = pi/2 / 70;
+static const float wheel_sensitivity = pi/2 / 40;
 
-struct view_drct view_drct = {
-  .w_drct = Vec4(0, 0, 0, 1)
+struct view_drct view_drct;
+
+static struct sph_drct4 sph_view_drct = {
+  .psi = 0, .te = 0, .fi = 0
 };
 
-static struct sph_drct3 sph_view_drct = {
-  .te = 0, .fi = 0
-};
-
-static struct section cur_section = {
-  .x = Vec4(1, 0, 0, 0),
-  .y = Vec4(0, 1, 0, 0),
-  .z = Vec4(0, 0, 1, 0)
-};
+static void rotate(float angle, Vec4* const x, Vec4* const y) {
+  const float sin_a = sin(angle), cos_a = cos(angle);
+  const Vec4 old_x = *x, old_y = *y;
+  *x = sum(mul_vn(old_x, cos_a), mul_vn(old_y, sin_a));
+  *y = sum(mul_vn(old_x, -sin_a), mul_vn(old_y, cos_a));
+}
 
 static void build_view_drct() {
-  float sin_fi = sin(sph_view_drct.fi), cos_fi = cos(sph_view_drct.fi);
-  Vec4 x = cur_section.x, y = cur_section.y, z = cur_section.z;
-
-  Vec4 x2 = sum(mul_vn(x, cos_fi), mul_vn(y, sin_fi));
-  Vec4 y2 = sum(mul_vn(x, -sin_fi), mul_vn(y, cos_fi));
-  Vec4 z2 = z;
-
-  float sin_te = sin(sph_view_drct.te), cos_te = cos(sph_view_drct.te);
   view_drct = {
-    .forward = sum(mul_vn(y2, cos_te), mul_vn(z2, sin_te)),
-    .top     = sum(mul_vn(y2, -sin_te), mul_vn(z2, cos_te)),
-    .right   = x2,
-    .w_drct  = view_drct.w_drct
+    .forward = Vec4(0, 1, 0, 0),
+    .top     = Vec4(0, 0, 1, 0),
+    .right   = Vec4(1, 0, 0, 0),
+    .w_drct  = Vec4(0, 0, 0, 1)
   };
+
+  rotate(sph_view_drct.psi, &view_drct.forward, &view_drct.w_drct);
+  rotate(sph_view_drct.fi, &view_drct.right, &view_drct.forward);
+  rotate(sph_view_drct.te, &view_drct.forward, &view_drct.top);
 }
 
-static void change_view_drct(float d_te, float d_fi) {
-  change_sph_drct3(&sph_view_drct, d_te, d_fi);
+static void change_view_drct(float d_psi, float d_te, float d_fi) {
+  change_sph_drct4(&sph_view_drct, d_psi, d_te, d_fi);
   build_view_drct();
   frames_still = 1;
-}
-
-static void build_cur_section() {
-  float sin_te = sin(sph_view_drct.te), cos_te = cos(sph_view_drct.te);
-  Vec4 x = view_drct.right, y = view_drct.forward, z = view_drct.top;
-
-  Vec4 x2 = x;
-  Vec4 y2 = sum(mul_vn(y, cos_te), mul_vn(z, -sin_te));
-  Vec4 z2 = sum(mul_vn(y, sin_te), mul_vn(z, cos_te));
-
-  float sin_fi = sin(sph_view_drct.fi), cos_fi = cos(sph_view_drct.fi);
-  cur_section = {
-    .x = sum(mul_vn(x2, cos_fi), mul_vn(y2, -sin_fi)),
-    .y = sum(mul_vn(x2, sin_fi), mul_vn(y2, cos_fi)),
-    .z = z2
-  };
 }
 
 
@@ -129,12 +109,12 @@ void handle_event(Event event) {
 
     case Event::MouseMoved:
       if (mouse_hidden) {
-        int dx = event.mouseMove.x - w / 2, dy = h / 2 - event.mouseMove.y;
-        if (abs(dx) > scr_size - 10 || dy > scr_size - 10)
-          Mouse::setPosition(Vector2i(w / 2, h / 2), window);
+        int dx = event.mouseMove.x - half_w, dy = half_h - event.mouseMove.y;
+        if (abs(dx) > max_mouse_deflection || dy > max_mouse_deflection)
+          Mouse::setPosition(Vector2i(half_w, half_h), window);
         else if (dx != 0 || dy != 0) {
-          change_view_drct(dy * mouse_sensitivity, -dx * mouse_sensitivity);
-          Mouse::setPosition(Vector2i(w / 2, h / 2), window);
+          change_view_drct(0, dy * mouse_sensitivity, -dx * mouse_sensitivity);
+          Mouse::setPosition(Vector2i(half_w, half_h), window);
         }
       }
       break;
@@ -142,18 +122,12 @@ void handle_event(Event event) {
     case Event::MouseButtonPressed:
       window.setMouseCursorVisible(false);
       mouse_hidden = true;
-      Mouse::setPosition(Vector2i(w / 2, h / 2), window);
+      Mouse::setPosition(Vector2i(half_w, half_h), window);
       break;
 
     case Event::MouseWheelScrolled:
-      if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
-        float d = event.mouseWheelScroll.delta * wheel_sensitivity;
-        Vec4 forward = view_drct.forward, w_drct = view_drct.w_drct;
-        view_drct.forward = normalize(sum(forward, mul_vn(w_drct, -d)));
-        view_drct.w_drct  = normalize(sum(w_drct , mul_vn(forward, d)));
-        build_cur_section();
-        frames_still = 1;
-      }
+      if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel)
+        change_view_drct(event.mouseWheelScroll.delta * wheel_sensitivity, 0, 0);
       break;
 
     case Event::KeyPressed:

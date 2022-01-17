@@ -3,7 +3,7 @@
 
 #include <SFML/Graphics.hpp>
 
-extern int w, h;
+extern int real_w, real_h;
 extern sf::RenderWindow window;
 extern int frames_still;
 

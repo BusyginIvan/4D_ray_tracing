@@ -9,6 +9,8 @@ const float small_val = 0.0003f;
 int min(int x, int y) { return x < y ? x : y; }
 int max(int x, int y) { return x > y ? x : y; }
 
+float universal_round(float x, int n) { return round(x * pow(10, n)) / pow(10, n); }
+
 
 Vec4 sum(Vec4 v1, Vec4 v2) { return Vec4(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w); }
 Vec4 sum(Vec4 v1, Vec4 v2, Vec4 v3) { return sum(sum(v1, v2), v3); }
@@ -34,12 +36,12 @@ Vec4 sph_drct4_to_vec(struct sph_drct4 sph_drct) {
 
 void change_sph_drct4(struct sph_drct4* const sph_drct, float d_psi, float d_te, float d_fi) {
   sph_drct->psi += d_psi;
-  if (sph_drct->psi < 0) sph_drct->psi = 0;
-  if (sph_drct->psi > pi) sph_drct->psi = pi;
+  if (sph_drct->psi < -pi/2) sph_drct->psi = -pi/2;
+  if (sph_drct->psi >  pi/2) sph_drct->psi =  pi/2;
 
   sph_drct->te += d_te;
-  if (sph_drct->te < 0) sph_drct->te = 0;
-  if (sph_drct->te > pi) sph_drct->te = pi;
+  if (sph_drct->te < -pi/2) sph_drct->te = -pi/2;
+  if (sph_drct->te >  pi/2) sph_drct->te =  pi/2;
 
   sph_drct->fi += d_fi;
   if (sph_drct->fi < -pi) sph_drct->fi += 2 * pi;
