@@ -1,10 +1,6 @@
-#include "util.h"
-using namespace sf;
-
-const float pi = 3.14159265f;
-
-int min(int x, int y) { return x < y ? x : y; }
-int max(int x, int y) { return x > y ? x : y; }
+#include <SFML/Graphics.hpp>
+#include <cmath>
+using namespace sf::Glsl;
 
 Vec4 sum(Vec4 v1, Vec4 v2) { return Vec4(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w); }
 Vec4 sum(Vec4 v1, Vec4 v2, Vec4 v3) { return sum(sum(v1, v2), v3); }

@@ -1,5 +1,6 @@
 #include "controls.h"
 #include <iostream>
+#include <cmath>
 #include "main.h"
 #include "util.h"
 
@@ -7,13 +8,15 @@ using namespace sf;
 using namespace sf::Glsl;
 using namespace std;
 
-bool mouse_hidden = true;
-static const int half_w = real_w / 2, half_h = real_h / 2;
+bool mouse_hidden = false;
+static unsigned int half_w, half_h;
+RenderWindow* window;
+
 
 // Всё, что касается мышки и поворота камеры.
 
 // Это чтобы не было резкого скачка, когда мышка входит в окно. Максимальное смещение курсора от центра.
-static const int max_mouse_deflection = max(min(half_w, half_h) - 10, 50);
+static int max_mouse_deflection;
 // Чувствительность мышки. Изменение угла поворота камеры при смещении курсора на один пиксель.
 static const float mouse_sensitivity = pi/2 / 300;
 // Чувствительность колёсика. Изменение угла поворота камеры при повороте колёсика на единицу.
@@ -76,7 +79,7 @@ static void change_section(const float psi) {
 // Всё, что касается клавиатуры и перемещения.
 
 Vec4 focus = Vec4(0, -2.5, 0, 0);
-static float speed = 0.08f;
+static float speed = 0.1f;
 
 static struct {
   bool forward = false;  bool back  = false;
@@ -117,8 +120,11 @@ void move() {
 
 
 // Инициализация.
-void controls_init() {
-  window.setMouseCursorVisible(false);
+void controls_init(RenderWindow &main_window) {
+  window = &main_window;
+  half_w = real_w / 2; half_h = real_h / 2;
+  max_mouse_deflection = max(min(half_w, half_h) - 10, 50u);
+  //window->setMouseCursorVisible(true);
   build_view_drct();
 }
 
@@ -128,26 +134,26 @@ void controls_init() {
 void handle_event(const Event event) {
   switch (event.type) {
     case Event::Closed:
-      window.close();
+      window->close();
       break;
 
     case Event::MouseMoved:
       if (mouse_hidden) {
         int dx = event.mouseMove.x - half_w, dy = half_h - event.mouseMove.y;
         if (abs(dx) > max_mouse_deflection || dy > max_mouse_deflection)
-          Mouse::setPosition(Vector2i(half_w, half_h), window);
+          Mouse::setPosition(Vector2i(half_w, half_h), *window);
         else if (dx != 0 || dy != 0) {
           change_sph_view_drct(dy * mouse_sensitivity, -dx * mouse_sensitivity);
           build_view_drct(); frames_still = 1;
-          Mouse::setPosition(Vector2i(half_w, half_h), window);
+          Mouse::setPosition(Vector2i(half_w, half_h), *window);
         }
       }
       break;
 
     case Event::MouseButtonPressed:
-      window.setMouseCursorVisible(false);
+      window->setMouseCursorVisible(false);
       mouse_hidden = true;
-      Mouse::setPosition(Vector2i(half_w, half_h), window);
+      Mouse::setPosition(Vector2i(half_w, half_h), *window);
       break;
 
     case Event::MouseWheelScrolled:
@@ -159,7 +165,7 @@ void handle_event(const Event event) {
 
     case Event::KeyPressed:
       if (event.key.code == Keyboard::Escape) {
-        window.setMouseCursorVisible(true);
+        window->setMouseCursorVisible(true);
         mouse_hidden = false;
       } else
         handle_key(event, true);

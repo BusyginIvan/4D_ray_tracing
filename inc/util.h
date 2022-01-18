@@ -2,13 +2,10 @@
 #define RAY_TRACING_UTIL_H
 
 #include <SFML/Graphics.hpp>
-#include <cmath>
 using namespace sf::Glsl;
 
-extern const float pi;
-
-int min(int x, int y);
-int max(int x, int y);
+const float pi  = 3.14159265f;
+const float fib = 1.61803399f;
 
 Vec4 sum(Vec4 v1, Vec4 v2);
 Vec4 sum(Vec4 v1, Vec4 v2, Vec4 v3);
