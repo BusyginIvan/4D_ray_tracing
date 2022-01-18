@@ -15,17 +15,3 @@ Vec4 div_vn(Vec4 v, float l) { return mul_vn(v, 1 / l); }
 float dot(Vec4 v1, Vec4 v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w; }
 float mod(Vec4 v) { return sqrt(dot(v, v)); }
 Vec4 normalize(Vec4 v) { return div_vn(v, mod(v)); }
-
-void change_sph_drct(struct sph_drct* const sph_drct, float d_psi, float d_te, float d_fi) {
-  sph_drct->psi += d_psi;
-  if (sph_drct->psi < -pi/2) sph_drct->psi = -pi/2;
-  if (sph_drct->psi >  pi/2) sph_drct->psi =  pi/2;
-
-  sph_drct->te += d_te;
-  if (sph_drct->te < -pi/2) sph_drct->te = -pi/2;
-  if (sph_drct->te >  pi/2) sph_drct->te =  pi/2;
-
-  sph_drct->fi += d_fi;
-  if (sph_drct->fi < -pi) sph_drct->fi += 2 * pi;
-  if (sph_drct->fi > pi) sph_drct->fi -= 2 * pi;
-}

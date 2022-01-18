@@ -1,9 +1,11 @@
 #include "controls.h"
+#include <iostream>
 #include "main.h"
 #include "util.h"
 
 using namespace sf;
 using namespace sf::Glsl;
+using namespace std;
 
 bool mouse_hidden = true;
 static const int half_w = real_w / 2, half_h = real_h / 2;
@@ -17,15 +19,23 @@ static const float mouse_sensitivity = pi/2 / 300;
 // Чувствительность колёсика. Изменение угла поворота камеры при повороте колёсика на единицу.
 static const float wheel_sensitivity = pi/2 / 40 ;
 
-// Углы, задающие ориентацию камеры (наблюдателя) в пространстве.
-static struct sph_drct sph_view_drct = {
-  .psi = 0, .te = 0, .fi = 0
-};
 // Единичные векторы, характеризующие положение наблюдателя: куда он смотрит, где у него право, верх...
-struct view_drct view_drct;
+struct view_drct view_drct = {
+  .w_drct = Vec4(0, 0, 0, 1)
+};
+
+// Углы, задающие ориентацию камеры (наблюдателя) в текущем трёхмерном сечении.
+static struct { float te = 0, fi = 0; } sph_view_drct;
+
+// Оси текущего трёхмерного сечения.
+static struct {
+  Vec4 x = Vec4(1, 0, 0, 0);
+  Vec4 y = Vec4(0, 1, 0, 0);
+  Vec4 z = Vec4(0, 0, 1, 0);
+} cur_section;
 
 // Поворот двух осей относительно плоскости, содержащей две другие оси.
-static void rotate(float angle, Vec4* const x, Vec4* const y) {
+static void rotate(const float angle, Vec4* const x, Vec4* const y) {
   const float sin_a = sin(angle), cos_a = cos(angle);
   const Vec4 old_x = *x, old_y = *y;
   *x = sum(mul_vn(old_x, cos_a), mul_vn(old_y, sin_a));
@@ -35,28 +45,38 @@ static void rotate(float angle, Vec4* const x, Vec4* const y) {
 // Построение направляющих по углам поворота камеры.
 static void build_view_drct() {
   view_drct = {
-    .forward = Vec4(0, 1, 0, 0),
-    .top     = Vec4(0, 0, 1, 0),
-    .right   = Vec4(1, 0, 0, 0),
-    .w_drct  = Vec4(0, 0, 0, 1)
+    .forward = cur_section.y,
+    .top     = cur_section.z,
+    .right   = cur_section.x,
+    .w_drct  = view_drct.w_drct
   };
-  rotate(sph_view_drct.psi, &view_drct.forward, &view_drct.w_drct );
-  rotate(sph_view_drct.fi , &view_drct.right  , &view_drct.forward);
-  rotate(sph_view_drct.te , &view_drct.forward, &view_drct.top    );
+  rotate(sph_view_drct.fi, &view_drct.right  , &view_drct.forward);
+  rotate(sph_view_drct.te, &view_drct.forward, &view_drct.top    );
 }
 
-// Поворот камеры (взора).
-static void change_view_drct(float d_psi, float d_te, float d_fi) {
-  change_sph_drct(&sph_view_drct, d_psi, d_te, d_fi);
-  build_view_drct();
-  frames_still = 1;
+// Изменение углов поворота камеры в текущем трёхмерном сечении.
+static void change_sph_view_drct(const float d_te, const float d_fi) {
+  sph_view_drct.te += d_te;
+  if (sph_view_drct.te < -pi/2) sph_view_drct.te = -pi/2;
+  if (sph_view_drct.te >  pi/2) sph_view_drct.te =  pi/2;
+
+  sph_view_drct.fi += d_fi;
+  if (sph_view_drct.fi < -pi) sph_view_drct.fi += 2 * pi;
+  if (sph_view_drct.fi > pi) sph_view_drct.fi -= 2 * pi;
+}
+
+// Поворот сечения в четвёртое измерение.
+static void change_section(const float psi) {
+  rotate(sph_view_drct.fi, &cur_section.x   , &cur_section.y);
+  rotate(psi             , &view_drct.w_drct, &cur_section.y);
+  rotate(sph_view_drct.fi, &cur_section.y   , &cur_section.x);
 }
 
 
 // Всё, что касается клавиатуры и перемещения.
 
-Vec4 focus = Vec4(0, -2.5, 1, 0); // Точка за матрицей (виртуальным экраном), откуда летят лучи.
-static float speed = 0.08f;         // Скорость перемещения.
+Vec4 focus = Vec4(0, -2.5, 0, 0);
+static float speed = 0.08f;
 
 static struct {
   bool forward = false;  bool back  = false;
@@ -65,7 +85,7 @@ static struct {
   bool w_drct  = false;  bool neg_w = false;
 } move_state;
 
-static void handle_key(Event event, bool state) {
+static void handle_key(const Event event, const bool state) {
   switch (event.key.code) {
     case Keyboard::W:      move_state.forward = state;  break;
     case Keyboard::S:      move_state.back    = state;  break;
@@ -79,7 +99,7 @@ static void handle_key(Event event, bool state) {
   }
 }
 
-static void move_focus(Vec4 drct) {
+static void move_focus(const Vec4 drct) {
   focus = sum(focus, mul_vn(drct, speed));
   frames_still = 1;
 }
@@ -105,7 +125,7 @@ void controls_init() {
 
 // Обработка событий.
 
-void handle_event(Event event) {
+void handle_event(const Event event) {
   switch (event.type) {
     case Event::Closed:
       window.close();
@@ -117,7 +137,8 @@ void handle_event(Event event) {
         if (abs(dx) > max_mouse_deflection || dy > max_mouse_deflection)
           Mouse::setPosition(Vector2i(half_w, half_h), window);
         else if (dx != 0 || dy != 0) {
-          change_view_drct(0, dy * mouse_sensitivity, -dx * mouse_sensitivity);
+          change_sph_view_drct(dy * mouse_sensitivity, -dx * mouse_sensitivity);
+          build_view_drct(); frames_still = 1;
           Mouse::setPosition(Vector2i(half_w, half_h), window);
         }
       }
@@ -130,8 +151,10 @@ void handle_event(Event event) {
       break;
 
     case Event::MouseWheelScrolled:
-      if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel)
-        change_view_drct(event.mouseWheelScroll.delta * wheel_sensitivity, 0, 0);
+      if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
+        change_section(event.mouseWheelScroll.delta * wheel_sensitivity);
+        build_view_drct(); frames_still = 1;
+      }
       break;
 
     case Event::KeyPressed:
