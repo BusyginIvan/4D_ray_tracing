@@ -160,17 +160,23 @@ struct sun_properties {
 
 // Инициализация объектов сцены.
 
-const vec3 sky_color = vec3(0.001, 0.001, 0.003);
-
+const vec3 sky_color = vec3(0.001, 0.001, 0.002);
 const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), pi / 25, vec3(1, 1, 0.1));
 
-const space[1] spaces = space[1](
-  space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0), properties(0, 0, vec3(0.6, 0.4, 0.2)))
+const space[8] spaces = space[8](
+  space(vec4( 3, 0, 0, 0), vec4(1, 0, 0, 0), properties(0, 0, vec3(0.443, 0.035, 0.667))),
+  space(vec4(-3, 0, 0, 0), vec4(1, 0, 0, 0), properties(0, 0, vec3(1.0  , 1.0  , 0.0  ))),
+  space(vec4(0,  3, 0, 0), vec4(0, 1, 0, 0), properties(0, 0, vec3(1.0  , 0.0  , 0.0  ))),
+  space(vec4(0, -3, 0, 0), vec4(0, 1, 0, 0), properties(0, 0, vec3(0.0  , 0.8  , 0.0  ))),
+  space(vec4(0, 0,  3, 0), vec4(0, 0, 1, 0), properties(0, 0, vec3(1.0  , 1.0  , 1.0  ))),
+  space(vec4(0, 0, -3, 0), vec4(0, 0, 1, 0), properties(0, 0, vec3(1.0  , 1.0  , 1.0  ))),
+  space(vec4(0, 0, 0,  3), vec4(0, 0, 0, 1), properties(0, 0, vec3(1.0  , 0.667, 0.0  ))),
+  space(vec4(0, 0, 0, -3), vec4(0, 0, 0, 1), properties(0, 0, vec3(0.071, 0.251, 0.671)))
 );
 
 const sphere[2] spheres = sphere[2](
-  sphere(vec4(0, 0, 0, 0), 1.0 , properties(0, 0.7, vec3(0.2, 1.0, 0.2))),
-  sphere(vec4(2, 0, 0, 0), 0.5 , properties(1, 0.0, vec3(1, 1, 1)))
+  sphere(vec4(0, 0, -1, 0), 1.0, properties(0, 0, vec3(1, 1, 1))),
+  sphere(vec4(0, 0,  3, 0), 0.8, properties(1, 0, vec3(1, 1, 1)))
 );
 
 
@@ -248,7 +254,7 @@ vec4 ray_drct() {
 }
 
 // Преобразование цвета. Фильтр, чтобы не было темно.
-const float c = 200; // С увеличением этой константы усиливается эффект.
+const float c = 70; // С увеличением этой константы усиливается эффект.
 vec3 tone_mapping(vec3 color) {
   return (color * c * (1 + color / c)) / (1 + color * c);
 }
@@ -262,7 +268,7 @@ void main() {
   scr_coord = vec2(scr_coord.x / resolution.x, scr_coord.y / resolution.y);
 
   vec3 new_color = vec3(0);
-  int samples = 70;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
+  int samples = 80;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
   vec4 ray_drct = ray_drct();
   for(int i = 0; i < samples; i++)
     new_color += trace(focus, ray_drct);

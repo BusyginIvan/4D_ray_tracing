@@ -55,8 +55,8 @@ static void change_view_drct(float d_psi, float d_te, float d_fi) {
 
 // Всё, что касается клавиатуры и перемещения.
 
-Vec4 focus = Vec4(0, -5, 0, 0); // Точка за матрицей (виртуальным экраном), откуда летят лучи.
-static float speed = 0.08f;     // Скорость перемещения.
+Vec4 focus = Vec4(0, -2.5, 1, 0); // Точка за матрицей (виртуальным экраном), откуда летят лучи.
+static float speed = 0.08f;         // Скорость перемещения.
 
 static struct {
   bool forward = false;  bool back  = false;

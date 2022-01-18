@@ -7,8 +7,9 @@ using namespace sf;
 using namespace sf::Glsl;
 using namespace std;
 
-static const int w = 324, h = 200; // Размер области отображения в клеточках (крупных пикселях).
-static const int pixel_size = 3;   // Размер одной клеточки в пикселях.
+static const int w = 324, h = 200;     // Размер области отображения в клеточках (крупных пикселях).
+static const int pixel_size = 3;       // Размер одной клеточки в пикселях.
+static const float dist_to_mtr = 1.2f; // Расстояние от фокуса до матрицы. Влияет на угол обзора.
 
 int real_w = w * pixel_size, real_h = h * pixel_size;
 RenderWindow window(VideoMode(real_w, real_h), "Ray tracing", Style::Titlebar | Style::Close);
@@ -45,7 +46,7 @@ int main() {
 
       if (frames_still == 1) {
         shader.setUniform("focus", focus);
-        shader.setUniform("vec_to_mtr", mul_vn(view_drct.forward, 1.5f));
+        shader.setUniform("vec_to_mtr", mul_vn(view_drct.forward, dist_to_mtr));
         shader.setUniform("top_drct", view_drct.top);
         shader.setUniform("right_drct", view_drct.right);
       }
