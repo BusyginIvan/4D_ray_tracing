@@ -152,9 +152,9 @@ intersection space_intersection(space space, vec4 coord, vec4 drct) {
 
 // Солнце.
 struct sun_properties {
-  vec4 drct;
-  float angular_size;
-  vec3 color;
+  vec4 drct;              // Направление, в котором находится солнце.
+  float angular_size;     // Угловой размер солнца (максимальный угол отклонения полёта луча от положения солнца при попадании).
+  vec3 color;             // Цвет солнца; свет, испускаемый им.
 };
 
 
@@ -203,7 +203,7 @@ vec3 trace(vec4 coord, vec4 drct) {
     for (int i = 0; i < spaces.length(); i++)
       inter = near(inter, space_intersection(spaces[i], coord, drct));
 
-    if (!inter.valid) {  // Если нет пересечения, добавляем цвет неба.
+    if (!inter.valid) {  // Если нет пересечения, попадаем в солнце или небо.
       if (angle(drct, sun.drct) < sun.angular_size)
         res_color += rem_color * sun.color;
       else
