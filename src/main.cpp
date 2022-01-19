@@ -18,7 +18,7 @@ struct window {
   Sprite sprite;
 };
 
-static void init_window(struct window* window, string title, int style) {
+static void init_window(struct window* const window, const string title, const int style) {
   window->height_in_cells = window->width_in_cells / fib;
   VideoMode video_mode = VideoMode(
     window->width_in_cells * window->pixel_size,
@@ -31,7 +31,7 @@ static void init_window(struct window* window, string title, int style) {
   window->sprite.setScale(window->pixel_size, window->pixel_size);
 }
 
-static void draw_window(struct window* window, Shader &shader, Vec4 top, Vec4 right) {
+static void draw_window(struct window* const window, Shader &shader, const Vec4 top, const Vec4 right) {
   shader.setUniform("resolution", Vec2(window->width_in_cells, window->height_in_cells));
   shader.setUniform("old_frame", window->texture.getTexture());
   shader.setUniform("top_drct", top);
@@ -61,11 +61,11 @@ int main() {
   // Положение окон на экране.
   const unsigned int main_window_height = yxz_window.render_window.getSize().y + 37;
   const VideoMode video_mode = VideoMode::getDesktopMode();
-  unsigned int screen_width = video_mode.width, screen_height = video_mode.height - 60;
+  const unsigned int screen_width = video_mode.width, screen_height = video_mode.height - 60;
 
-  unsigned int y_indent =
+  const unsigned int y_indent =
     (screen_height - main_window_height - yxw_window.render_window.getSize().y) / 3;
-  unsigned int x_indent =
+  const unsigned int x_indent =
     (screen_width - ywz_window.render_window.getSize().x * 2) / 3;
 
   yxz_window.render_window.setPosition(Ivec2(
@@ -97,9 +97,10 @@ int main() {
 
       shader.setUniform("seed", rand());
       shader.setUniform("part", 1.0f / frames_still);
-      shader.setUniform("focus", focus);
-      if (frames_still == 1)
+      if (frames_still == 1) {
+        shader.setUniform("focus", focus);
         shader.setUniform("vec_to_mtr", mul_vn(view_drct.forward, dist_to_mtr));
+      }
 
       draw_window(&yxz_window, shader, view_drct.top, view_drct.right);
       draw_window(&ywz_window, shader, view_drct.top, view_drct.w_drct);
