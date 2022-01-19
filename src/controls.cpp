@@ -20,7 +20,7 @@ static int max_mouse_deflection;
 // Чувствительность мышки. Изменение угла поворота камеры при смещении курсора на один пиксель.
 static const float mouse_sensitivity = pi/2 / 300;
 // Чувствительность колёсика. Изменение угла поворота камеры при повороте колёсика на единицу.
-static const float wheel_sensitivity = pi/2 / 40 ;
+static const float wheel_sensitivity = pi/2 / 35 ;
 
 // Единичные векторы, характеризующие положение наблюдателя: куда он смотрит, где у него право, верх...
 struct view_drct view_drct = {
@@ -79,7 +79,7 @@ static void change_section(const float psi) {
 // Всё, что касается клавиатуры и перемещения.
 
 Vec4 focus = Vec4(0, -2.5, 0, 0);
-static float speed = 0.09f;
+static float speed = 0.1f;
 
 static struct {
   bool forward = false;  bool back  = false;

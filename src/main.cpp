@@ -6,6 +6,7 @@
 
 using namespace sf;
 using namespace sf::Glsl;
+using namespace std;
 
 unsigned int frames_still = 1;  // Номер кадра с тех пор, как камера неподвижна.
 
@@ -17,7 +18,7 @@ struct window {
   Sprite sprite;
 };
 
-static void init_window(struct window* window, std::string title, int style) {
+static void init_window(struct window* window, string title, int style) {
   window->height_in_cells = window->width_in_cells / fib;
   VideoMode video_mode = VideoMode(
     window->width_in_cells * window->pixel_size,
@@ -45,11 +46,11 @@ int main() {
   const float mtr_height = 1.0f;  // Половина высоты матрицы (виртуального экрана в пространстве).
 
   // Инициализация окон.
-  struct window yxz_window = { .width_in_cells = 200, .pixel_size = 4 };
+  struct window yxz_window = { .width_in_cells = 170, .pixel_size = 5 };
   init_window(&yxz_window, "Main section", Style::Close);
   controls_init(yxz_window.render_window); // Управление будет привязано к этому окну.
 
-  const unsigned int add_windows_width = 120, add_windows_pixel_size = 5;
+  const unsigned int add_windows_width = 100, add_windows_pixel_size = 6;
 
   struct window ywz_window = { .width_in_cells = add_windows_width, .pixel_size = add_windows_pixel_size };
   init_window(&ywz_window, "Additional section", Style::None);
@@ -81,6 +82,9 @@ int main() {
   Shader shader; shader.loadFromFile("../src/shader.frag", Shader::Fragment);
   shader.setUniform("mtr_sizes", Vec2(mtr_height * fib, mtr_height));
 
+  // Таймер.
+  Clock clock;
+
   // Главный цикл приложения.
   while (yxz_window.render_window.isOpen())
   {
@@ -102,6 +106,7 @@ int main() {
       draw_window(&yxw_window, shader, view_drct.w_drct, view_drct.right);
 
       frames_still++;
+      cout << "FPS: " << 1 / clock.restart().asSeconds() << endl;
     }
   }
   return 0;
