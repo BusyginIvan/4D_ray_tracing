@@ -79,7 +79,7 @@ static void change_section(const float psi) {
 // Всё, что касается клавиатуры и перемещения.
 
 Vec4 focus = Vec4(0, -2.5, 0, 0);
-static float speed = 0.1f;
+static float speed = 0.09f;
 
 static struct {
   bool forward = false;  bool back  = false;
@@ -158,7 +158,7 @@ void handle_event(const Event event) {
 
     case Event::MouseWheelScrolled:
       if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
-        change_section(event.mouseWheelScroll.delta * wheel_sensitivity);
+        change_section(-event.mouseWheelScroll.delta * wheel_sensitivity);
         build_view_drct(); frames_still = 1;
       }
       break;

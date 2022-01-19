@@ -268,7 +268,7 @@ void main() {
   scr_coord = vec2(scr_coord.x / resolution.x, scr_coord.y / resolution.y);
 
   vec3 new_color = vec3(0);
-  int samples = 150;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
+  int samples = 200;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
   vec4 ray_drct = ray_drct();
   for(int i = 0; i < samples; i++)
     new_color += trace(focus, ray_drct);
