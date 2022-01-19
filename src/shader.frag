@@ -182,7 +182,7 @@ const sphere[2] spheres = sphere[2](
 
 // Трассировка луча.
 
-const uint reflections_number = 4;   // Максимальное количество переотражений.
+const uint reflections_number = 4;    // Максимальное количество переотражений (или точнее число перелётов).
 
 vec4 redirect(vec4 vec, vec4 norm) {  // Отражение вектора, если он смотрит внутрь поверхности.
   float dot = dot(vec, norm);
@@ -268,7 +268,7 @@ void main() {
   scr_coord = vec2(scr_coord.x / resolution.x, scr_coord.y / resolution.y);
 
   vec3 new_color = vec3(0);
-  int samples = 70;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
+  int samples = 120;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
   vec4 ray_drct = ray_drct();
   for(int i = 0; i < samples; i++)
     new_color += trace(focus, ray_drct);
