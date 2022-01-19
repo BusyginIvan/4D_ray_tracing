@@ -4,8 +4,8 @@
 #include <SFML/Graphics.hpp>
 using namespace sf::Glsl;
 
-const float pi  = 3.14159265f;
-const float fib = 1.61803399f;
+const float pi = 3.14159265f;
+const float golden = 1.61803399f;
 
 Vec4 sum(Vec4 v1, Vec4 v2);
 Vec4 sum(Vec4 v1, Vec4 v2, Vec4 v3);

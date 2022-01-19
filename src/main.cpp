@@ -11,28 +11,30 @@ using namespace std;
 unsigned int frames_still = 1;  // Номер кадра с тех пор, как камера неподвижна.
 
 struct window {
-  unsigned int width_in_cells, height_in_cells;
-  unsigned int pixel_size;
+  unsigned int cells_width, cells_height;
   RenderWindow render_window;
   RenderTexture texture;
   Sprite sprite;
 };
 
-static void init_window(struct window* const window, const string title, const int style) {
-  window->height_in_cells = window->width_in_cells / fib;
-  VideoMode video_mode = VideoMode(
-    window->width_in_cells * window->pixel_size,
-    window->height_in_cells * window->pixel_size
-  );
-  window->render_window.create(video_mode, title, style);
+static unsigned int  get_width(const struct window* const window) { return window->render_window.getSize().x; }
+static unsigned int get_height(const struct window* const window) { return window->render_window.getSize().y; }
+
+static void init_window(struct window* const window, unsigned int cell_size) {
+  window->cells_width  = get_width(window)  / cell_size;
+  window->cells_height = get_height(window) / cell_size;
+  window->render_window.setSize(Vector2u(
+    window->cells_width  * cell_size,
+    window->cells_height * cell_size
+  ));
   window->render_window.setFramerateLimit(60);
-  window->texture.create(window->width_in_cells, window->height_in_cells);
+  window->texture.create(window->cells_width, window->cells_height);
   window->sprite = Sprite(window->texture.getTexture());
-  window->sprite.setScale(window->pixel_size, window->pixel_size);
+  window->sprite.setScale(cell_size, cell_size);
 }
 
 static void draw_window(struct window* const window, Shader &shader, const Vec4 top, const Vec4 right) {
-  shader.setUniform("resolution", Vec2(window->width_in_cells, window->height_in_cells));
+  shader.setUniform("resolution", Vec2(window->cells_width, window->cells_height));
   shader.setUniform("old_frame", window->texture.getTexture());
   shader.setUniform("top_drct", top);
   shader.setUniform("right_drct", right);
@@ -46,41 +48,46 @@ int main() {
   const float mtr_height = 1.0f;  // Половина высоты матрицы (виртуального экрана в пространстве).
 
   // Инициализация окон.
-  struct window yxz_window = { .width_in_cells = 170, .pixel_size = 5 };
-  init_window(&yxz_window, "Main section", Style::Close);
+  unsigned int width = 850;
+
+  struct window yxz_window;
+  yxz_window.render_window.create(VideoMode(width, width / golden), "Main section", Style::Close);
+  init_window(&yxz_window, 5);
   controls_init(yxz_window.render_window); // Управление будет привязано к этому окну.
 
-  const unsigned int add_windows_width = 100, add_windows_pixel_size = 6;
+  const unsigned int cell_size = 6; width = 600;
 
-  struct window ywz_window = { .width_in_cells = add_windows_width, .pixel_size = add_windows_pixel_size };
-  init_window(&ywz_window, "Additional section", Style::None);
+  struct window ywz_window;
+  ywz_window.render_window.create(VideoMode(width, width / golden), "", Style::None);
+  init_window(&ywz_window, cell_size);
 
-  struct window yxw_window = { .width_in_cells = add_windows_width, .pixel_size = add_windows_pixel_size };
-  init_window(&yxw_window, "Additional section", Style::None);
+  struct window yxw_window;
+  yxw_window.render_window.create(VideoMode(width, width / golden), "", Style::None);
+  init_window(&yxw_window, cell_size);
 
   // Положение окон на экране.
-  const unsigned int main_window_height = yxz_window.render_window.getSize().y + 37;
+  const unsigned int main_window_height = get_height(&yxz_window) + 37;
   const VideoMode video_mode = VideoMode::getDesktopMode();
   const unsigned int screen_width = video_mode.width, screen_height = video_mode.height - 60;
 
   const unsigned int y_indent =
-    (screen_height - main_window_height - yxw_window.render_window.getSize().y) / 3;
+    (screen_height - main_window_height - get_height(&yxw_window)) / 3;
   const unsigned int x_indent =
-    (screen_width - ywz_window.render_window.getSize().x * 2) / 3;
+    (screen_width - get_width(&ywz_window) * 2) / 3;
 
   yxz_window.render_window.setPosition(Ivec2(
-    (screen_width - yxz_window.render_window.getSize().x) / 2, y_indent
+    (screen_width - get_width(&yxz_window)) / 2, y_indent
   ));
   ywz_window.render_window.setPosition(Ivec2(
     x_indent, main_window_height + y_indent * 2
   ));
   yxw_window.render_window.setPosition(Ivec2(
-    ywz_window.render_window.getSize().x + x_indent * 2, main_window_height + y_indent * 2
+    get_width(&ywz_window) + x_indent * 2, main_window_height + y_indent * 2
   ));
 
   // Инициализация шейдера.
   Shader shader; shader.loadFromFile("../src/shader.frag", Shader::Fragment);
-  shader.setUniform("mtr_sizes", Vec2(mtr_height * fib, mtr_height));
+  shader.setUniform("mtr_sizes", Vec2(mtr_height * golden, mtr_height));
 
   // Таймер.
   Clock clock;
