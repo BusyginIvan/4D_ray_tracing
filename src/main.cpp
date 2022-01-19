@@ -17,20 +17,23 @@ struct window {
   Sprite sprite;
 };
 
-static unsigned int  get_width(const struct window* const window) { return window->render_window.getSize().x; }
-static unsigned int get_height(const struct window* const window) { return window->render_window.getSize().y; }
+struct window_size {
+  unsigned int width, height, cell_size;
+};
 
-static void init_window(struct window* const window, unsigned int cell_size) {
-  window->cells_width  = get_width(window)  / cell_size;
-  window->cells_height = get_height(window) / cell_size;
-  window->render_window.setSize(Vector2u(
-    window->cells_width  * cell_size,
-    window->cells_height * cell_size
-  ));
+static void init_window(
+  struct window* const window, struct window_size* const size,
+  const string title, const int style
+) {
+  window->cells_width  = size->width  / size->cell_size;
+  window->cells_height = size->height / size->cell_size;
+  size->width  = window->cells_width  * size->cell_size;
+  size->height = window->cells_height * size->cell_size;
+  window->render_window.create(VideoMode(size->width, size->height), title, style);
   window->render_window.setFramerateLimit(60);
   window->texture.create(window->cells_width, window->cells_height);
   window->sprite = Sprite(window->texture.getTexture());
-  window->sprite.setScale(cell_size, cell_size);
+  window->sprite.setScale(size->cell_size, size->cell_size);
 }
 
 static void draw_window(struct window* const window, Shader &shader, const Vec4 top, const Vec4 right) {
@@ -46,43 +49,48 @@ static void draw_window(struct window* const window, Shader &shader, const Vec4 
 int main() {
   const float dist_to_mtr = 1.3f; // Расстояние от фокуса до матрицы. Влияет на угол обзора.
   const float mtr_height = 1.0f;  // Половина высоты матрицы (виртуального экрана в пространстве).
+  struct window_size main_window = { .width = 800, .cell_size = 5 };
+  main_window.height = main_window.width / golden;
+  struct window_size add_window  = { .width = 500, .cell_size = 6 };
+  add_window.height  = add_window.width / golden;
+
+  // Корректировка размеров окон на случай, если экран слишком маленький.
+  const unsigned int window_title_height = 37, task_bar_height = 60,
+    screen_width = VideoMode::getDesktopMode().width,
+    screen_height = VideoMode::getDesktopMode().height - task_bar_height - window_title_height;
+
+  const float decrease_factor = min(min(
+    1.0f,
+    (float) screen_height / (main_window.height + add_window.height)
+  ), min(
+    (float) screen_width / 2 / add_window.width,
+    (float) screen_width / main_window.width
+  ));
+
+  main_window.width *= decrease_factor; main_window.height *= decrease_factor;
+  add_window.width  *= decrease_factor; add_window.height  *= decrease_factor;
 
   // Инициализация окон.
-  unsigned int width = 850;
-
   struct window yxz_window;
-  yxz_window.render_window.create(VideoMode(width, width / golden), "Main section", Style::Close);
-  init_window(&yxz_window, 5);
+  init_window(&yxz_window, &main_window, "Main section", Style::Close);
   controls_init(yxz_window.render_window); // Управление будет привязано к этому окну.
 
-  const unsigned int cell_size = 6; width = 600;
+  struct window ywz_window; init_window(&ywz_window, &add_window, "", Style::None);
 
-  struct window ywz_window;
-  ywz_window.render_window.create(VideoMode(width, width / golden), "", Style::None);
-  init_window(&ywz_window, cell_size);
-
-  struct window yxw_window;
-  yxw_window.render_window.create(VideoMode(width, width / golden), "", Style::None);
-  init_window(&yxw_window, cell_size);
+  struct window yxw_window; init_window(&yxw_window, &add_window, "", Style::None);
 
   // Положение окон на экране.
-  const unsigned int main_window_height = get_height(&yxz_window) + 37;
-  const VideoMode video_mode = VideoMode::getDesktopMode();
-  const unsigned int screen_width = video_mode.width, screen_height = video_mode.height - 60;
-
-  const unsigned int y_indent =
-    (screen_height - main_window_height - get_height(&yxw_window)) / 3;
-  const unsigned int x_indent =
-    (screen_width - get_width(&ywz_window) * 2) / 3;
+  const unsigned int y_indent = (screen_height - main_window.height - add_window.height) / 3;
+  const unsigned int x_indent = (screen_width - add_window.width * 2) / 3;
 
   yxz_window.render_window.setPosition(Ivec2(
-    (screen_width - get_width(&yxz_window)) / 2, y_indent
+    (screen_width - main_window.width) / 2, y_indent
   ));
   ywz_window.render_window.setPosition(Ivec2(
-    x_indent, main_window_height + y_indent * 2
+    x_indent, main_window.height + window_title_height + y_indent * 2
   ));
   yxw_window.render_window.setPosition(Ivec2(
-    get_width(&ywz_window) + x_indent * 2, main_window_height + y_indent * 2
+    add_window.width + x_indent * 2, main_window.height + window_title_height + y_indent * 2
   ));
 
   // Инициализация шейдера.
