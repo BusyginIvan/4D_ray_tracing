@@ -8,64 +8,47 @@ using namespace sf;
 using namespace sf::Glsl;
 using namespace std;
 
-unsigned int real_w, real_h;    // Размеры области отображения в пикселях.
 unsigned int frames_still = 1;  // Номер кадра с тех пор, как камера неподвижна.
 
+struct window {
+  unsigned int width_in_cells, height_in_cells;
+  unsigned int pixel_size;
+  RenderWindow render_window;
+  RenderTexture texture;
+  Sprite sprite;
+};
+
+static void init_window(struct window* window, string title) {
+  window->height_in_cells = window->width_in_cells / fib;
+  unsigned int real_w = window->width_in_cells * window->pixel_size;
+  unsigned int real_h = window->height_in_cells * window->pixel_size;
+  window->render_window.create(VideoMode(real_w, real_h), title, Style::Close);
+  window->render_window.setFramerateLimit(60);
+  window->texture.create(window->width_in_cells, window->height_in_cells);
+  window->sprite = Sprite(window->texture.getTexture());
+  window->sprite.setScale(window->pixel_size, window->pixel_size);
+}
+
 int main() {
-  unsigned int width_in_cells = 220,       // Ширина области отображения в клеточках (крупных пикселях).
-   height_in_cells = width_in_cells / fib; // Высота области отображения в клеточках (крупных пикселях).
-  unsigned int pixel_size = 4;             // Размер одной клеточки в пикселях.
   const float dist_to_mtr = 1.2f;          // Расстояние от фокуса до матрицы. Влияет на угол обзора.
   const float mtr_height = 1.0f;           // Половина высоты матрицы (виртуального экрана в пространстве).
 
-
-  VideoMode video_mode = VideoMode::getDesktopMode();
+  const VideoMode video_mode = VideoMode::getDesktopMode();
   unsigned int screen_width = video_mode.width - 10, screen_height = video_mode.height - 130;
-  real_w = width_in_cells * pixel_size; real_h = height_in_cells * pixel_size;
 
-  // На случай, если заданы слишком большие размеры окна.
-  if (real_w > screen_width / 2){
-    width_in_cells = screen_width / 2 / pixel_size;
-    real_w = width_in_cells * pixel_size;
-  }
-  if (real_h > screen_height) {
-    height_in_cells = screen_height / pixel_size;
-    real_h = height_in_cells * pixel_size;
-  }
-
-  // Отступы между окнами и краями экрана.
-  unsigned int x_indent = (video_mode.width - 2 * real_w) / 3;
-  unsigned int y_indent = min(50u, (screen_height - real_h) / 2);
-
-
-  RenderWindow window1(VideoMode(real_w, real_h), "Main section", Style::Titlebar | Style::Close);
-  window1.setPosition(Ivec2(x_indent, y_indent)); // Положение окна.
-  window1.setFramerateLimit(60);                  // Максимальное FPS.
-  controls_init(window1);                         // Управление будет привязано к этому окну.
-
-  RenderTexture texture1; texture1.create(width_in_cells, height_in_cells);
-  Sprite sprite1 = Sprite(texture1.getTexture());
-  sprite1.setScale(pixel_size, pixel_size);
-
-
-  RenderWindow window2(VideoMode(real_w, real_h), "Additional section", Style::Titlebar | Style::Close);
-  window2.setPosition(Ivec2(x_indent * 2 + real_w, y_indent));
-  window2.setFramerateLimit(60);
-
-  RenderTexture texture2; texture2.create(width_in_cells, height_in_cells);
-  Sprite sprite2 = Sprite(texture2.getTexture());
-  sprite2.setScale(pixel_size, pixel_size);
-
+  struct window main_window = { .width_in_cells = 200, .pixel_size = 4 };
+  init_window(&main_window, "Main section");
+  main_window.render_window.setPosition(Ivec2(
+    (screen_width - main_window.render_window.getSize().x) / 2, 50
+  ));
+  controls_init(main_window.render_window); // Управление будет привязано к этому окну.
 
   Shader shader; shader.loadFromFile("../src/shader.frag", Shader::Fragment);
-  shader.setUniform("resolution", Vec2(width_in_cells, height_in_cells));
-  shader.setUniform("mtr_sizes", Vec2(mtr_height / height_in_cells * width_in_cells, mtr_height));
 
-
-  while (window1.isOpen())
+  while (main_window.render_window.isOpen())
   {
     Event event;
-    while (window1.pollEvent(event))
+    while (main_window.render_window.pollEvent(event))
       handle_event(event);
 
     if (mouse_hidden) {
@@ -80,15 +63,15 @@ int main() {
         shader.setUniform("right_drct", view_drct.right);
       }
 
-      shader.setUniform("old_frame", texture1.getTexture());
+      shader.setUniform("resolution", Vec2(main_window.width_in_cells, main_window.height_in_cells));
+      shader.setUniform("mtr_sizes", Vec2(
+        mtr_height / main_window.height_in_cells * main_window.width_in_cells, mtr_height
+      ));
+      shader.setUniform("old_frame", main_window.texture.getTexture());
       shader.setUniform("top_drct", view_drct.top);
-      texture1.draw(sprite1, &shader); window1.draw(sprite1);
-      window1.display();
-
-      shader.setUniform("old_frame", texture2.getTexture());
-      shader.setUniform("top_drct", view_drct.w_drct);
-      texture2.draw(sprite2, &shader); window2.draw(sprite2);
-      window2.display();
+      main_window.texture.draw(main_window.sprite, &shader);
+      main_window.render_window.draw(main_window.sprite);
+      main_window.render_window.display();
 
       frames_still++;
     }

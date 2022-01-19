@@ -122,7 +122,7 @@ void move() {
 // Инициализация.
 void controls_init(RenderWindow &main_window) {
   window = &main_window;
-  half_w = real_w / 2; half_h = real_h / 2;
+  half_w = window->getSize().x / 2; half_h = window->getSize().y / 2;
   max_mouse_deflection = max(min(half_w, half_h) - 10, 50u);
   //window->setMouseCursorVisible(true);
   build_view_drct();
