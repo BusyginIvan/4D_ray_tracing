@@ -79,7 +79,7 @@ static void change_section(const float psi) {
 // Всё, что касается клавиатуры и перемещения.
 
 Vec4 focus = Vec4(0, -2.5, 0, 0);
-static float speed = 0.1f;
+static float speed = 0.08f;
 
 static struct {
   bool forward = false;  bool back  = false;

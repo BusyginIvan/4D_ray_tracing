@@ -5,6 +5,64 @@ const float small_val = 0.0003;   // Маленькая величина. При
 
 vec2 scr_coord;                   // scr (screen) – экран. Координата пикселя в окне.
 
+// Геометрические объекты.
+struct line { vec4 point, drct; };
+struct ray { vec4 point, drct; };
+struct space { vec4 point, norm; };
+struct sphere { vec4 center; float r; };
+struct maybe_point { bool valid; vec4 point; };
+
+
+// Вспомогательные функции.
+
+// Синус по косинусу или наоборот.
+float cos_to_sin(float cos) { return sqrt(1 - cos * cos); }
+
+// Косинус угла между векторами.
+float v_cos(vec4 v1, vec4 v2) {
+  return dot(v1, v2) / length(v1) / length(v2);
+}
+
+// Угол между векторами.
+float angle(vec4 v1, vec4 v2) { return acos(v_cos(v1, v2)); }
+
+// Убираем из вектора составляющую, коллинеарную направлению.
+vec4 vec_in_space(vec4 vec, vec4 drct) { return vec - drct * dot(vec, drct); }
+
+// Вектор от точки к прямой.
+vec4 vec_to_line(vec4 point, line line) {
+  vec4 v1 = line.point - point;
+  float dot_v1ld = dot(v1, line.drct);
+  vec4 v2 = -dot_v1ld * line.drct;
+  return v1 + v2;
+}
+
+// Вектор от точки к пространству.
+vec4 vec_to_space(vec4 point, space space) {
+  return space.norm * dot(space.point - point, space.norm);
+}
+
+// Отражение вектора, если он смотрит внутрь поверхности.
+vec4 redirect(vec4 vec, vec4 norm) {
+  float dot = dot(vec, norm);
+  return dot >= 0 ? vec : vec - 2 * dot * norm;
+}
+
+// Расстояние до точки пересечения с гиперсферой.
+float dist_to_sphere(ray ray, sphere sphere) {
+  vec4 vec = sphere.center - ray.point;              // Вектор к центру гиперсферы.
+  float dot = dot(vec, ray.drct);
+  if (dot <= 0) return -1;
+  float length_v = length(vec);                      // Расстояние до центра гиперсферы.
+  if (length_v <= sphere.r) return -1;
+  float cos_vd = dot / length_v;                     // Косинус угла между vec и drct (лучом).
+  float sin_vd = cos_to_sin(cos_vd);                 // Синус угла между vec и drct.
+  float sin_rd = sin_vd / sphere.r * length_v;       // Синус угла между радиусом и лучом.
+  if (sin_rd >= 1) return -1;
+  float angle_rv = asin(sin_rd) - acos(cos_vd);      // Угол между радиусом и vec.
+  return sqrt(sphere.r * sphere.r + length_v * length_v - 2 * sphere.r * length_v * cos(angle_rv));
+}
+
 
 // Псевдорандом.
 
@@ -78,25 +136,25 @@ vec4 rand_drct() {
 
 // Характеристики материала и результат пересечения с лучом.
 
-struct properties {
+struct material {
   float glow;         // Доля испускаемого света в противовес отражаемому.
   float refl_prob;    // Вероятность зеркального отражения луча.
   vec3 color;         // Цвет. Остальной свет поглащается.
 };
 
-const properties null_properties = properties(0, 0, vec3(0));
+const material null_material = material(0, 0, vec3(0));
 
 struct intersection {
   bool valid;        // Было ли пересечение.
   float dist;        // Расстояние, пройденное лучом до пересечения с объектом.
   vec4 norm;         // Нормаль к поверхности в точке пересечения.
-  properties prop;   // Характеристики материала объекта.
+  material material; // Характеристики материала объекта.
 };
 
-const intersection no_intersection = intersection(false, 0, vec4(0), null_properties);
+const intersection no_intersection = intersection(false, 0, vec4(0), null_material);
 
 // Определение ближайшего пересечения.
-intersection near(intersection int1, intersection int2) {
+intersection nearest(intersection int1, intersection int2) {
   if (int1.valid) {
     if (int2.valid) return int1.dist < int2.dist ? int1 : int2;
     else return int1;
@@ -105,48 +163,35 @@ intersection near(intersection int1, intersection int2) {
 
 
 // Гиперcфера.
-
-struct sphere {
-  vec4 coord;       // Координаты гиперсферы.
-  float r;          // Радиус гиперсферы.
-  properties prop;  // Характеристики материала.
+struct sphere_obj {
+  sphere figure;
+  material material;
 };
 
-// Пересечение луча с гиперсферой. Принимает координату начала полёта луча и его направление.
-intersection sphere_intersection(sphere sphere, vec4 coord, vec4 drct) {
-  vec4 vec = sphere.coord - coord;                   // Вектор к центру гиперсферы.
-  float dot = dot(vec, drct);
-  if (dot <= 0) return no_intersection;
-  float length_v = length(vec);                      // Расстояние до центра гиперсферы.
-  if (length_v <= sphere.r) return no_intersection;
-  float cos_vd = dot / length_v;                     // Косинус угла между vec и drct (лучом).
-  float sin_vd = sqrt(1 - cos_vd * cos_vd);          // Синус угла между vec и drct.
-  float sin_rd = sin_vd / sphere.r * length_v;       // Синус угла между радиусом и лучом.
-  if (sin_rd >= 1) return no_intersection;
-  float angle_rv = asin(sin_rd) - acos(cos_vd);      // Угол между радиусом и vec.
-  float dist = sqrt(sphere.r * sphere.r + length_v * length_v - 2 * sphere.r * length_v * cos(angle_rv));
-  vec4 norm = normalize(coord + drct * dist - sphere.coord);
-  return intersection(true, dist, norm, sphere.prop);
+// Пересечение луча с гиперсферой.
+intersection sphere_intersection(sphere_obj sphere, ray ray) {
+  float dist = dist_to_sphere(ray, sphere.figure);
+  if (dist == -1) return no_intersection;
+  vec4 norm = normalize(ray.point + ray.drct * dist - sphere.figure.center);
+  return intersection(true, dist, norm, sphere.material);
 }
 
 
 // Пространство (трёхмерное).
-
-struct space {
-  vec4 point;       // Точка на плоскости.
-  vec4 norm;        // Нормаль к плоскости.
-  properties prop;  // Характеристики материала.
+struct space_obj {
+  space figure;
+  material material;
 };
 
-// Пересечение луча с пространством. Принимает координату начала полёта луча и его направление.
-intersection space_intersection(space space, vec4 coord, vec4 drct) {
-  vec4 vec = space.point - coord;
-  float dot_vn = dot(vec, space.norm);      // Расстояние до пространства (со знаком).
-  vec4 drct_h = space.norm * sign(dot_vn);  // Единичный вектор в сторону пространства.
-  float cos_dh = dot(drct_h, drct);         // Косинус угла между этим вектором и лучём.
-  if (cos_dh <= 0) return no_intersection;  // Если луч летит от пространства, пересечения нет.
+// Пересечение луча с пространством.
+intersection space_intersection(space_obj space, ray ray) {
+  vec4 vec_cp = space.figure.point - ray.point;
+  float dot_vn = dot(vec_cp, space.figure.norm);   // Расстояние до пространства (со знаком).
+  vec4 drct_h = space.figure.norm * sign(dot_vn);  // Единичный вектор в сторону пространства.
+  float cos_dh = dot(drct_h, ray.drct);            // Косинус угла между этим вектором и лучём.
+  if (cos_dh <= 0) return no_intersection;         // Если луч летит от пространства, пересечения нет.
   float dist = abs(dot_vn) / cos_dh;
-  return intersection(true, dist, -drct_h, space.prop);
+  return intersection(true, dist, -drct_h, space.material);
 }
 
 
@@ -160,23 +205,18 @@ struct sun_properties {
 
 // Инициализация объектов сцены.
 
-const vec3 sky_color = vec3(0.001, 0.001, 0.002);
+const vec3 sky_color = vec3(0.001, 0.001, 0.003);
 const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), pi / 25, vec3(1, 1, 0.1));
 
-const space[8] spaces = space[8](
-  space(vec4( 3, 0, 0, 0), vec4(1, 0, 0, 0), properties(0, 0, vec3(0.443, 0.035, 0.667))),
-  space(vec4(-3, 0, 0, 0), vec4(1, 0, 0, 0), properties(0, 0, vec3(1.0  , 1.0  , 0.0  ))),
-  space(vec4(0,  3, 0, 0), vec4(0, 1, 0, 0), properties(0, 0, vec3(1.0  , 0.0  , 0.0  ))),
-  space(vec4(0, -3, 0, 0), vec4(0, 1, 0, 0), properties(0, 0, vec3(0.0  , 0.8  , 0.0  ))),
-  space(vec4(0, 0,  3, 0), vec4(0, 0, 1, 0), properties(0, 0, vec3(1.0  , 1.0  , 1.0  ))),
-  space(vec4(0, 0, -3, 0), vec4(0, 0, 1, 0), properties(0, 0, vec3(1.0  , 1.0  , 1.0  ))),
-  space(vec4(0, 0, 0,  3), vec4(0, 0, 0, 1), properties(0, 0, vec3(1.0  , 0.667, 0.0  ))),
-  space(vec4(0, 0, 0, -3), vec4(0, 0, 0, 1), properties(0, 0, vec3(0.071, 0.251, 0.671)))
+const uint spaces_count = 1;
+const space_obj[spaces_count] spaces = space_obj[spaces_count](
+  space_obj(space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(0.6, 0.4, 0.2)))
 );
 
-const sphere[2] spheres = sphere[2](
-  sphere(vec4(0, 0, -1, 0), 1.0, properties(0, 0, vec3(1, 1, 1))),
-  sphere(vec4(0, 0,  3, 0), 0.8, properties(1, 0, vec3(1, 1, 1)))
+const uint spheres_count = 2;
+const sphere_obj[spheres_count] spheres = sphere_obj[spheres_count](
+  sphere_obj(sphere(vec4(0, 0, 0, 0), 1.0), material(0, 0.7, vec3(0.2, 1.0, 0.2))),
+  sphere_obj(sphere(vec4(2, 0, 0, 0), 0.5), material(1, 0.0, vec3(1, 1, 1)))
 );
 
 
@@ -184,52 +224,40 @@ const sphere[2] spheres = sphere[2](
 
 const uint reflections_number = 4;    // Максимальное количество переотражений (или точнее число перелётов).
 
-vec4 redirect(vec4 vec, vec4 norm) {  // Отражение вектора, если он смотрит внутрь поверхности.
-  float dot = dot(vec, norm);
-  return dot >= 0 ? vec : vec - 2 * dot * norm;
-}
-
-float v_cos(vec4 v1, vec4 v2) {       // Косинус угла между векторами.
-  return dot(v1, v2) / length(v1) / length(v2);
-}
-
-float angle(vec4 v1, vec4 v2) {       // Угол между векторами.
-  return acos(v_cos(v1, v2));
-}
-
 // Трассировка луча. Возвращает цвет.
-vec3 trace(vec4 coord, vec4 drct) {
+vec3 trace(ray ray) {
   vec3 res_color = vec3(0);  // res (result) – свет, полученный в сумме от источников или неба.
   vec3 rem_color = vec3(1);  // rem (remaining) – ещё не поглощённый свет, оставшийся в луче.
   for (int i = 0; i < reflections_number; i++) {
     // Поиск ближайшего пересечения с объектом.
     intersection inter = no_intersection;
     for (int i = 0; i < spheres.length(); i++)
-      inter = near(inter, sphere_intersection(spheres[i], coord, drct));
+      inter = nearest(inter, sphere_intersection(spheres[i], ray));
     for (int i = 0; i < spaces.length(); i++)
-      inter = near(inter, space_intersection(spaces[i], coord, drct));
-
-    if (!inter.valid) {  // Если нет пересечения, попадаем в солнце или небо.
-      if (angle(drct, sun.drct) < sun.angular_size)
+      inter = nearest(inter, space_intersection(spaces[i], ray));
+    
+    // Если нет пересечения, попадаем в солнце или небо.
+    if (!inter.valid) {
+      if (angle(ray.drct, sun.drct) < sun.angular_size)
         res_color += rem_color * sun.color;
       else
         res_color += rem_color * sky_color;
       return res_color;
     }
-
-    rem_color = rem_color * inter.prop.color;    // Поглощение света.
-    res_color += rem_color * inter.prop.glow;    // Учёт свечения объекта.
-    if (inter.prop.glow == 1) return res_color;
-    rem_color *= 1 - inter.prop.glow;            // Вычисляем долю отражённого света.
+    
+    rem_color = rem_color * inter.material.color;    // Поглощение света.
+    res_color += rem_color * inter.material.glow;    // Учёт свечения объекта.
+    if (inter.material.glow == 1) return res_color;
+    rem_color *= 1 - inter.material.glow;            // Вычисляем долю отражённого света.
 
     // Новая точка начала луча. С небольшим отступом, чтобы не попадать внутрь объекта.
-    coord += drct * inter.dist + inter.norm * small_val;
+    ray.point += ray.drct * inter.dist + inter.norm * small_val;
 
     // Отражение или случайное направление луча.
-    if (rand() > inter.prop.refl_prob)
-      drct = redirect(rand_drct(), inter.norm);
+    if (rand() > inter.material.refl_prob)
+      ray.drct = redirect(rand_drct(), inter.norm);
     else
-      drct = reflect(drct, inter.norm);
+      ray.drct = reflect(ray.drct, inter.norm);
   }
   return res_color; // При достижении максимально числа отражений нового света не добавляется. Тень.
 }
@@ -271,7 +299,7 @@ void main() {
   int samples = 120;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
   vec4 ray_drct = ray_drct();
   for(int i = 0; i < samples; i++)
-    new_color += trace(focus, ray_drct);
+    new_color += trace(ray(focus, ray_drct));
   new_color /= samples;
 
   new_color = tone_mapping(new_color); // Применение фильтра.
