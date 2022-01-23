@@ -48,21 +48,6 @@ vec4 redirect(vec4 vec, vec4 norm) {
   return dot >= 0 ? vec : vec - 2 * dot * norm;
 }
 
-// Расстояние до точки пересечения с гиперсферой.
-float dist_to_sphere(ray ray, sphere sphere) {
-  vec4 vec = sphere.center - ray.point;              // Вектор к центру гиперсферы.
-  float dot = dot(vec, ray.drct);
-  if (dot <= 0) return -1;
-  float length_v = length(vec);                      // Расстояние до центра гиперсферы.
-  if (length_v <= sphere.r) return -1;
-  float cos_vd = dot / length_v;                     // Косинус угла между vec и drct (лучом).
-  float sin_vd = cos_to_sin(cos_vd);                 // Синус угла между vec и drct.
-  float sin_rd = sin_vd / sphere.r * length_v;       // Синус угла между радиусом и лучом.
-  if (sin_rd >= 1) return -1;
-  float angle_rv = asin(sin_rd) - acos(cos_vd);      // Угол между радиусом и vec.
-  return sqrt(sphere.r * sphere.r + length_v * length_v - 2 * sphere.r * length_v * cos(angle_rv));
-}
-
 
 // Псевдорандом.
 
@@ -168,11 +153,24 @@ struct sphere_obj {
   material material;
 };
 
-// Пересечение луча с гиперсферой.
+// Пересечение луча с гиперсферой. Обозначения: o - центр сферы, p - ray.point, a - точка пересечения.
 intersection sphere_intersection(sphere_obj sphere, ray ray) {
-  float dist = dist_to_sphere(ray, sphere.figure);
-  if (dist == -1) return no_intersection;
-  vec4 norm = normalize(ray.point + ray.drct * dist - sphere.figure.center);
+  vec4 vec_po = sphere.figure.center - ray.point;
+  float dot_pord = dot(vec_po, ray.drct);
+  float len_po = length(vec_po);
+  float r = sphere.figure.r;
+  if (len_po >= r && dot_pord < 0) return no_intersection;
+  float cos_opa = dot_pord / len_po;
+  if (cos_opa > 1) cos_opa = 1; // Это важно. Бывает, что из-за неточности вычислений получается чуть больше одного.
+  float angle_opa = acos(cos_opa);
+  float sin_oap = len_po * sin(angle_opa) / r;
+  if (sin_oap >= 1) return no_intersection;
+  float angle_oap = asin(sin_oap);
+  if (len_po > r) angle_oap = pi - angle_oap;
+  float angle_aop = pi - angle_opa - angle_oap;
+  float dist = sqrt(r * r + len_po * len_po - 2 * r * len_po * cos(angle_aop));
+  vec4 vec_oa = ray.point + ray.drct * dist - sphere.figure.center;
+  vec4 norm = (len_po > r ? vec_oa : -vec_oa) / r;
   return intersection(true, dist, norm, sphere.material);
 }
 
@@ -195,6 +193,63 @@ intersection space_intersection(space_obj space, ray ray) {
 }
 
 
+// Цилиндр, бесконечный по двум направлениям.
+struct cylinder_obj {
+  vec4 point, axis1, axis2;
+  float r;
+  material material;
+};
+
+// Пересечение с цилиндром.
+intersection cylinder_intersection(cylinder_obj cylinder, ray ray_in_hyperspace) {
+  vec4 vec_to_space = vec_to_space(ray_in_hyperspace.point, space(cylinder.point, cylinder.axis1));
+  ray ray_in_space = ray(
+    ray_in_hyperspace.point + vec_to_space,
+    vec_in_space(ray_in_hyperspace.drct, cylinder.axis1)
+  );
+  if (length(ray_in_space.drct) == 0) return no_intersection;
+  
+  vec4 vec_to_plane = vec_to_space(ray_in_space.point, space(cylinder.point, cylinder.axis2));
+  ray ray_in_plane = ray(
+    ray_in_space.point + vec_to_plane,
+    vec_in_space(ray_in_space.drct, cylinder.axis2)
+  );
+  float length_drct_in_plane = length(ray_in_plane.drct);
+  if (length_drct_in_plane == 0) return no_intersection;
+  ray_in_plane.drct = ray_in_plane.drct / length_drct_in_plane;
+  
+  intersection inter = sphere_intersection(
+    sphere_obj(sphere(cylinder.point, cylinder.r), cylinder.material),
+    ray_in_plane
+  );
+  inter.dist /= length_drct_in_plane;
+  return inter;
+}
+
+
+// Объединение двух цилиндров.
+struct cylinders_union {
+  cylinder_obj cylinder1, cylinder2;
+};
+
+// Пересечение внутри фигуры.
+bool is_inside(float dist, ray ray, cylinder_obj cylinder) {
+  vec4 point_in_hyperspace = ray.point + ray.drct * dist;
+  vec4 point_in_space = point_in_hyperspace + vec_to_space(point_in_hyperspace, space(cylinder.point, cylinder.axis1));
+  vec4 point_in_plane = point_in_space + vec_to_space(point_in_space, space(cylinder.point, cylinder.axis2));
+  return length(cylinder.point - point_in_plane) <= cylinder.r;
+}
+
+// Пересечение с объединением.
+intersection cylinders_union_intersection(cylinders_union cylinders_union, ray ray) {
+  intersection inter1 = cylinder_intersection(cylinders_union.cylinder1, ray);
+  if (!is_inside(inter1.dist, ray, cylinders_union.cylinder2)) inter1 = no_intersection;
+  intersection inter2 = cylinder_intersection(cylinders_union.cylinder2, ray);
+  if (!is_inside(inter2.dist, ray, cylinders_union.cylinder1)) inter2 = no_intersection;
+  return nearest(inter1, inter2);
+}
+
+
 // Солнце.
 struct sun_properties {
   vec4 drct;              // Направление, в котором находится солнце.
@@ -205,18 +260,27 @@ struct sun_properties {
 
 // Инициализация объектов сцены.
 
-const vec3 sky_color = vec3(0.001, 0.001, 0.003);
-const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), pi / 25, vec3(1, 1, 0.1));
+const vec3 sky_color = vec3(0.004, 0.004, 0.004);
+const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), pi / 20, vec3(1, 1, 1));
 
 const uint spaces_count = 1;
 const space_obj[spaces_count] spaces = space_obj[spaces_count](
-  space_obj(space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(0.6, 0.4, 0.2)))
+  space_obj(space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(0.7, 0.7, 0.8)))
 );
 
-const uint spheres_count = 2;
-const sphere_obj[spheres_count] spheres = sphere_obj[spheres_count](
-  sphere_obj(sphere(vec4(0, 0, 0, 0), 1.0), material(0, 0.7, vec3(0.2, 1.0, 0.2))),
-  sphere_obj(sphere(vec4(2, 0, 0, 0), 0.5), material(1, 0.0, vec3(1, 1, 1)))
+const cylinders_union my_union = cylinders_union(
+  cylinder_obj(
+    vec4(0, 0, 0, 0),
+    vec4(1, 0, 0, 0), vec4(0, 0, 0, 1),
+    1.0,
+    material(0, 0, vec3(0.6, 0.4, 0.2))
+  ),
+  cylinder_obj(
+    vec4(0, 0, 0, 0),
+    vec4(0, 0, 1, 0), vec4(0, 1, 0, 0),
+    1.0,
+    material(0, 0, vec3(0.2, 1.0, 0.2))
+  )
 );
 
 
@@ -231,10 +295,13 @@ vec3 trace(ray ray) {
   for (int i = 0; i < reflections_number; i++) {
     // Поиск ближайшего пересечения с объектом.
     intersection inter = no_intersection;
-    for (int i = 0; i < spheres.length(); i++)
-      inter = nearest(inter, sphere_intersection(spheres[i], ray));
+    /*for (int i = 0; i < spheres.length(); i++)
+      inter = nearest(inter, sphere_intersection(spheres[i], ray));*/
     for (int i = 0; i < spaces.length(); i++)
       inter = nearest(inter, space_intersection(spaces[i], ray));
+    /*for (int i = 0; i < cylinders.length(); i++)
+      inter = nearest(inter, cylinder_intersection(cylinders[i], ray));*/
+    inter = nearest(inter, cylinders_union_intersection(my_union, ray));
     
     // Если нет пересечения, попадаем в солнце или небо.
     if (!inter.valid) {
@@ -282,7 +349,7 @@ vec4 ray_drct() {
 }
 
 // Преобразование цвета. Фильтр, чтобы не было темно.
-const float c = 70; // С увеличением этой константы усиливается эффект.
+const float c = 80; // С увеличением этой константы усиливается эффект.
 vec3 tone_mapping(vec3 color) {
   return (color * c * (1 + color / c)) / (1 + color * c);
 }
