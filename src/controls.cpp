@@ -20,7 +20,7 @@ static int max_mouse_deflection;
 // Чувствительность мышки. Изменение угла поворота камеры при смещении курсора на один пиксель.
 static const float mouse_sensitivity = pi/2 / 300;
 // Чувствительность колёсика. Изменение угла поворота камеры при повороте колёсика на единицу.
-static const float wheel_sensitivity = pi/2 / 35 ;
+static const float wheel_sensitivity = pi/2 / 40;
 
 // Единичные векторы, характеризующие положение наблюдателя: куда он смотрит, где у него право, верх...
 struct view_drct view_drct = {
