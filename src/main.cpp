@@ -47,11 +47,11 @@ static void draw_window(struct window* const window, Shader &shader, const Vec4 
 }
 
 int main() {
-  const float dist_to_mtr = 1.3f; // Расстояние от фокуса до матрицы. Влияет на угол обзора.
+  const float dist_to_mtr = 1.5f; // Расстояние от фокуса до матрицы. Влияет на угол обзора.
   const float mtr_height = 1.0f;  // Половина высоты матрицы (виртуального экрана в пространстве).
-  struct window_size main_window = { .width = 750, .cell_size = 4 };
+  struct window_size main_window = { .width = 800, .cell_size = 4 };
   main_window.height = main_window.width / golden;
-  struct window_size add_window  = { .width = 550, .cell_size = 5 };
+  struct window_size add_window  = { .width = 600, .cell_size = 5 };
   add_window.height  = add_window.width / golden;
 
   // Корректировка размеров окон на случай, если экран слишком маленький.
