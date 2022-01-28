@@ -102,20 +102,22 @@ static void handleKey(const Event event, const bool state) {
   }
 }
 
-static void moveFocus(const Vec4 drct) {
-  focus = sum(focus, mulVN(drct, speed));
-  framesStill = 1;
-}
-
 void move() {
-  if (moveState.forward)  moveFocus(     orientation.forward  );
-  if (moveState.back)     moveFocus( neg(orientation.forward) );
-  if (moveState.top)      moveFocus(     orientation.top      );
-  if (moveState.down)     moveFocus( neg(orientation.top)     );
-  if (moveState.right)    moveFocus(     orientation.right    );
-  if (moveState.left)     moveFocus( neg(orientation.right)   );
-  if (moveState.wDrctPos) moveFocus(     orientation.w_drct   );
-  if (moveState.wDrctNeg) moveFocus( neg(orientation.w_drct)  );
+  Vec4 drct = Vec4(0, 0, 0, 0);
+  if (moveState.forward)  drct = sum(drct, orientation.forward);
+  if (moveState.back)     drct = dif(drct, orientation.forward);
+  if (moveState.top)      drct = sum(drct, orientation.top    );
+  if (moveState.down)     drct = dif(drct, orientation.top    );
+  if (moveState.right)    drct = sum(drct, orientation.right  );
+  if (moveState.left)     drct = dif(drct, orientation.right  );
+  if (moveState.wDrctPos) drct = sum(drct, orientation.w_drct );
+  if (moveState.wDrctNeg) drct = dif(drct, orientation.w_drct );
+
+  float drct_length = mod(drct);
+  if (drct_length > 0) {
+    focus = sum(focus, mulVN(drct, speed / drct_length));
+    framesStill = 1;
+  }
 }
 
 
