@@ -18,12 +18,12 @@ RenderWindow* window;
 // Это чтобы не было резкого скачка, когда мышка входит в окно. Максимальное смещение курсора от центра.
 static int max_mouse_deflection;
 // Чувствительность мышки. Изменение угла поворота камеры при смещении курсора на один пиксель.
-static const float mouse_sensitivity = pi/2 / 300;
+static const float mouse_sensitivity = PI / 2 / 300;
 // Чувствительность колёсика. Изменение угла поворота камеры при повороте колёсика на единицу.
-static const float wheel_sensitivity = pi/2 / 40;
+static const float wheel_sensitivity = PI / 2 / 40;
 
 // Единичные векторы, характеризующие положение наблюдателя: куда он смотрит, где у него право, верх...
-struct view_drct view_drct = {
+struct orientation orientation = {
   .w_drct = Vec4(0, 0, 0, 1)
 };
 
@@ -47,31 +47,31 @@ static void rotate(const float angle, Vec4* const x, Vec4* const y) {
 
 // Построение направляющих по углам поворота камеры.
 static void build_view_drct() {
-  view_drct = {
+  orientation = {
     .forward = cur_section.y,
     .top     = cur_section.z,
     .right   = cur_section.x,
-    .w_drct  = view_drct.w_drct
+    .w_drct  = orientation.w_drct
   };
-  rotate(sph_view_drct.fi, &view_drct.right  , &view_drct.forward);
-  rotate(sph_view_drct.te, &view_drct.forward, &view_drct.top    );
+  rotate(sph_view_drct.fi, &orientation.right  , &orientation.forward);
+  rotate(sph_view_drct.te, &orientation.forward, &orientation.top    );
 }
 
 // Изменение углов поворота камеры в текущем трёхмерном сечении.
 static void change_sph_view_drct(const float d_te, const float d_fi) {
   sph_view_drct.te += d_te;
-  if (sph_view_drct.te < -pi/2) sph_view_drct.te = -pi/2;
-  if (sph_view_drct.te >  pi/2) sph_view_drct.te =  pi/2;
+  if (sph_view_drct.te < -PI / 2) sph_view_drct.te = -PI / 2;
+  if (sph_view_drct.te > PI / 2) sph_view_drct.te = PI / 2;
 
   sph_view_drct.fi += d_fi;
-  if (sph_view_drct.fi < -pi) sph_view_drct.fi += 2 * pi;
-  if (sph_view_drct.fi > pi) sph_view_drct.fi -= 2 * pi;
+  if (sph_view_drct.fi < -PI) sph_view_drct.fi += 2 * PI;
+  if (sph_view_drct.fi > PI) sph_view_drct.fi -= 2 * PI;
 }
 
 // Поворот сечения в четвёртое измерение.
 static void change_section(const float psi) {
   rotate(sph_view_drct.fi, &cur_section.x   , &cur_section.y);
-  rotate(psi             , &view_drct.w_drct, &cur_section.y);
+  rotate(psi             , &orientation.w_drct, &cur_section.y);
   rotate(sph_view_drct.fi, &cur_section.y   , &cur_section.x);
 }
 
@@ -82,22 +82,22 @@ Vec4 focus = Vec4(0, -2.5, 0, 0);
 static float speed = 0.08f;
 
 static struct {
-  bool forward = false;  bool back  = false;
-  bool right   = false;  bool left  = false;
-  bool top     = false;  bool down  = false;
-  bool w_drct  = false;  bool neg_w = false;
+  bool forward    = false, back       = false;
+  bool right      = false, left       = false;
+  bool top        = false, down       = false;
+  bool w_drct_pos = false, w_drct_neg = false;
 } move_state;
 
 static void handle_key(const Event event, const bool state) {
   switch (event.key.code) {
-    case Keyboard::W:      move_state.forward = state;  break;
-    case Keyboard::S:      move_state.back    = state;  break;
-    case Keyboard::D:      move_state.right   = state;  break;
-    case Keyboard::A:      move_state.left    = state;  break;
-    case Keyboard::Space:  move_state.top     = state;  break;
-    case Keyboard::LShift: move_state.down    = state;  break;
-    case Keyboard::E:      move_state.w_drct  = state;  break;
-    case Keyboard::Q:      move_state.neg_w   = state;  break;
+    case Keyboard::W:      move_state.forward    = state;  break;
+    case Keyboard::S:      move_state.back       = state;  break;
+    case Keyboard::D:      move_state.right      = state;  break;
+    case Keyboard::A:      move_state.left       = state;  break;
+    case Keyboard::Space:  move_state.top        = state;  break;
+    case Keyboard::LShift: move_state.down       = state;  break;
+    case Keyboard::E:      move_state.w_drct_pos = state;  break;
+    case Keyboard::Q:      move_state.w_drct_neg = state;  break;
     default: break;
   }
 }
@@ -108,14 +108,14 @@ static void move_focus(const Vec4 drct) {
 }
 
 void move() {
-  if (move_state.forward) move_focus(     view_drct.forward  );
-  if (move_state.back)    move_focus( neg(view_drct.forward) );
-  if (move_state.top)     move_focus(     view_drct.top      );
-  if (move_state.down)    move_focus( neg(view_drct.top    ) );
-  if (move_state.right)   move_focus(     view_drct.right    );
-  if (move_state.left)    move_focus( neg(view_drct.right  ) );
-  if (move_state.w_drct)  move_focus(     view_drct.w_drct   );
-  if (move_state.neg_w)   move_focus( neg(view_drct.w_drct ) );
+  if (move_state.forward) move_focus(orientation.forward  );
+  if (move_state.back)    move_focus( neg(orientation.forward) );
+  if (move_state.top)     move_focus(orientation.top      );
+  if (move_state.down)    move_focus( neg(orientation.top    ) );
+  if (move_state.right)   move_focus(orientation.right    );
+  if (move_state.left)    move_focus( neg(orientation.right  ) );
+  if (move_state.w_drct_pos)  move_focus(orientation.w_drct   );
+  if (move_state.w_drct_neg)   move_focus(neg(orientation.w_drct ) );
 }
 
 

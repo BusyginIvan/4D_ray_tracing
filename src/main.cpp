@@ -50,9 +50,9 @@ int main() {
   const float dist_to_mtr = 1.5f; // Расстояние от фокуса до матрицы. Влияет на угол обзора.
   const float mtr_height = 1.0f;  // Половина высоты матрицы (виртуального экрана в пространстве).
   struct window_size main_window = { .width = 850, .cell_size = 4 };
-  main_window.height = main_window.width / golden;
+  main_window.height = main_window.width / GOLDEN;
   struct window_size add_window  = { .width = 700, .cell_size = 4 };
-  add_window.height  = add_window.width / golden;
+  add_window.height  = add_window.width / GOLDEN;
 
   // Корректировка размеров окон на случай, если экран слишком маленький.
   const unsigned int window_title_height = 37, task_bar_height = 60,
@@ -95,7 +95,7 @@ int main() {
 
   // Инициализация шейдера.
   Shader shader; shader.loadFromFile("../src/shader.frag", Shader::Fragment);
-  shader.setUniform("mtr_sizes", Vec2(mtr_height * golden, mtr_height));
+  shader.setUniform("mtr_sizes", Vec2(mtr_height * GOLDEN, mtr_height));
 
   // Таймер.
   Clock clock;
@@ -114,12 +114,12 @@ int main() {
       shader.setUniform("part", 1.0f / frames_still);
       if (frames_still == 1) {
         shader.setUniform("focus", focus);
-        shader.setUniform("vec_to_mtr", mul_vn(view_drct.forward, dist_to_mtr));
+        shader.setUniform("vec_to_mtr", mul_vn(orientation.forward, dist_to_mtr));
       }
 
-      draw_window(&yxz_window, shader, view_drct.top, view_drct.right);
-      draw_window(&ywz_window, shader, view_drct.top, view_drct.w_drct);
-      draw_window(&yxw_window, shader, view_drct.w_drct, view_drct.right);
+      draw_window(&yxz_window, shader, orientation.top, orientation.right);
+      draw_window(&ywz_window, shader, orientation.top, orientation.w_drct);
+      draw_window(&yxw_window, shader, orientation.w_drct, orientation.right);
 
       frames_still++;
       cout << "FPS: " << 1 / clock.restart().asSeconds() << endl;
