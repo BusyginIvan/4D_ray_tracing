@@ -94,7 +94,7 @@ int main() {
   ));
 
   // Инициализация шейдера.
-  Shader shader; shader.loadFromFile("../src/shader.frag", Shader::Fragment);
+  Shader shader; shader.loadFromFile("shader.frag", Shader::Fragment);
   shader.setUniform("mtr_sizes", Vec2(mtr_height * GOLDEN, mtr_height));
 
   // Таймер.
