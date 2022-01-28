@@ -8,120 +8,122 @@ using namespace sf;
 using namespace sf::Glsl;
 using namespace std;
 
-unsigned int frames_still = 1;  // Номер кадра с тех пор, как камера неподвижна.
+unsigned int framesStill = 1;  // Номер кадра с тех пор, как камера неподвижна.
 
 struct window {
-  unsigned int cells_width, cells_height;
-  RenderWindow render_window;
+  unsigned int cellsWidth, cellsHeight;
+  RenderWindow renderWindow;
   RenderTexture texture;
   Sprite sprite;
 };
 
-struct window_size {
-  unsigned int width, height, cell_size;
+struct windowSize {
+  unsigned int width, height, cellSize;
 };
 
-static void init_window(
-  struct window* const window, struct window_size* const size,
+static void initWindow(
+  struct window* const window, struct windowSize* const size,
   const string title, const int style
 ) {
-  window->cells_width  = size->width  / size->cell_size;
-  window->cells_height = size->height / size->cell_size;
-  size->width  = window->cells_width  * size->cell_size;
-  size->height = window->cells_height * size->cell_size;
-  window->render_window.create(VideoMode(size->width, size->height), title, style);
-  window->render_window.setFramerateLimit(60);
-  window->texture.create(window->cells_width, window->cells_height);
+  window->cellsWidth  = size->width / size->cellSize;
+  window->cellsHeight = size->height / size->cellSize;
+  size->width  = window->cellsWidth * size->cellSize;
+  size->height = window->cellsHeight * size->cellSize;
+  window->renderWindow.create(VideoMode(size->width, size->height), title, style);
+  window->renderWindow.setFramerateLimit(60);
+  window->texture.create(window->cellsWidth, window->cellsHeight);
   window->sprite = Sprite(window->texture.getTexture());
-  window->sprite.setScale(size->cell_size, size->cell_size);
+  window->sprite.setScale(size->cellSize, size->cellSize);
 }
 
-static void draw_window(struct window* const window, Shader &shader, const Vec4 top, const Vec4 right) {
-  shader.setUniform("resolution", Vec2(window->cells_width, window->cells_height));
+static void drawWindow(struct window* const window, Shader &shader, const Vec4 top, const Vec4 right) {
+  shader.setUniform("resolution", Vec2(window->cellsWidth, window->cellsHeight));
   shader.setUniform("old_frame", window->texture.getTexture());
   shader.setUniform("top_drct", top);
   shader.setUniform("right_drct", right);
   window->texture.draw(window->sprite, &shader);
-  window->render_window.draw(window->sprite);
-  window->render_window.display();
+  window->renderWindow.draw(window->sprite);
+  window->renderWindow.display();
 }
 
 int main() {
-  const float dist_to_mtr = 1.5f; // Расстояние от фокуса до матрицы. Влияет на угол обзора.
-  const float mtr_height = 1.0f;  // Половина высоты матрицы (виртуального экрана в пространстве).
-  struct window_size main_window = { .width = 850, .cell_size = 4 };
-  main_window.height = main_window.width / GOLDEN;
-  struct window_size add_window  = { .width = 700, .cell_size = 4 };
-  add_window.height  = add_window.width / GOLDEN;
+  const float distToMtr = 1.5f; // Расстояние от фокуса до матрицы. Влияет на угол обзора.
+  const float mtrHeight = 1.0f;  // Половина высоты матрицы (виртуального экрана в пространстве).
+  struct windowSize mainWindow = { .width = 850, .cellSize = 4 };
+  mainWindow.height = mainWindow.width / GOLDEN;
+  struct windowSize addWindow  = { .width = 700, .cellSize = 4 };
+  addWindow.height  = addWindow.width / GOLDEN;
 
   // Корректировка размеров окон на случай, если экран слишком маленький.
-  const unsigned int window_title_height = 37, task_bar_height = 60,
-    screen_width = VideoMode::getDesktopMode().width,
-    screen_height = VideoMode::getDesktopMode().height - task_bar_height - window_title_height;
+  const unsigned int windowTitleHeight = 37, taskBarHeight = 60,
+    screenWidth = VideoMode::getDesktopMode().width,
+    screenHeight = VideoMode::getDesktopMode().height - taskBarHeight - windowTitleHeight;
 
-  const float decrease_factor = min(min(
+  const float decreaseFactor = min(min(
     1.0f,
-    (float) screen_height / (main_window.height + add_window.height)
+    (float) screenHeight / (mainWindow.height + addWindow.height)
   ), min(
-    (float) screen_width / 2 / add_window.width,
-    (float) screen_width / main_window.width
+    (float) screenWidth / 2 / addWindow.width,
+    (float) screenWidth / mainWindow.width
   ));
 
-  main_window.width *= decrease_factor; main_window.height *= decrease_factor;
-  add_window.width  *= decrease_factor; add_window.height  *= decrease_factor;
+  mainWindow.width *= decreaseFactor; mainWindow.height *= decreaseFactor;
+  addWindow.width  *= decreaseFactor; addWindow.height  *= decreaseFactor;
 
   // Инициализация окон.
-  struct window yxz_window;
-  init_window(&yxz_window, &main_window, "Main section", Style::Close);
-  controls_init(yxz_window.render_window); // Управление будет привязано к этому окну.
+  struct window windowYXZ;
+  initWindow(&windowYXZ, &mainWindow, "Main section", Style::Close);
+  controlsInit(windowYXZ.renderWindow); // Управление будет привязано к этому окну.
 
-  struct window ywz_window; init_window(&ywz_window, &add_window, "", Style::None);
+  struct window windowYWZ;
+  initWindow(&windowYWZ, &addWindow, "", Style::None);
 
-  struct window yxw_window; init_window(&yxw_window, &add_window, "", Style::None);
+  struct window windowYXW;
+  initWindow(&windowYXW, &addWindow, "", Style::None);
 
   // Положение окон на экране.
-  const unsigned int y_indent = (screen_height - main_window.height - add_window.height) / 3;
-  const unsigned int x_indent = (screen_width - add_window.width * 2) / 3;
+  const unsigned int indentY = (screenHeight - mainWindow.height - addWindow.height) / 3;
+  const unsigned int indentX = (screenWidth - addWindow.width * 2) / 3;
 
-  yxz_window.render_window.setPosition(Ivec2(
-    (screen_width - main_window.width) / 2, y_indent
+  windowYXZ.renderWindow.setPosition(Ivec2(
+    (screenWidth - mainWindow.width) / 2, indentY
   ));
-  ywz_window.render_window.setPosition(Ivec2(
-    x_indent, main_window.height + window_title_height + y_indent * 2
+  windowYWZ.renderWindow.setPosition(Ivec2(
+    indentX, mainWindow.height + windowTitleHeight + indentY * 2
   ));
-  yxw_window.render_window.setPosition(Ivec2(
-    add_window.width + x_indent * 2, main_window.height + window_title_height + y_indent * 2
+  windowYXW.renderWindow.setPosition(Ivec2(
+    addWindow.width + indentX * 2, mainWindow.height + windowTitleHeight + indentY * 2
   ));
 
   // Инициализация шейдера.
   Shader shader; shader.loadFromFile("shader.frag", Shader::Fragment);
-  shader.setUniform("mtr_sizes", Vec2(mtr_height * GOLDEN, mtr_height));
+  shader.setUniform("mtr_sizes", Vec2(mtrHeight * GOLDEN, mtrHeight));
 
   // Таймер.
   Clock clock;
 
   // Главный цикл приложения.
-  while (yxz_window.render_window.isOpen())
+  while (windowYXZ.renderWindow.isOpen())
   {
     Event event;
-    while (yxz_window.render_window.pollEvent(event))
-      handle_event(event);
+    while (windowYXZ.renderWindow.pollEvent(event))
+      handleEvent(event);
 
-    if (mouse_hidden) {
+    if (mouseHidden) {
       move();
 
       shader.setUniform("seed", rand());
-      shader.setUniform("part", 1.0f / frames_still);
-      if (frames_still == 1) {
+      shader.setUniform("part", 1.0f / framesStill);
+      if (framesStill == 1) {
         shader.setUniform("focus", focus);
-        shader.setUniform("vec_to_mtr", mul_vn(orientation.forward, dist_to_mtr));
+        shader.setUniform("vec_to_mtr", mulVN(orientation.forward, distToMtr));
       }
 
-      draw_window(&yxz_window, shader, orientation.top, orientation.right);
-      draw_window(&ywz_window, shader, orientation.top, orientation.w_drct);
-      draw_window(&yxw_window, shader, orientation.w_drct, orientation.right);
+      drawWindow(&windowYXZ, shader, orientation.top, orientation.right);
+      drawWindow(&windowYWZ, shader, orientation.top, orientation.w_drct);
+      drawWindow(&windowYXW, shader, orientation.w_drct, orientation.right);
 
-      frames_still++;
+      framesStill++;
       cout << "FPS: " << 1 / clock.restart().asSeconds() << endl;
     }
   }
