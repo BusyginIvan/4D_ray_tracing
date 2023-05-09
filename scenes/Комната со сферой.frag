@@ -1,22 +1,38 @@
-// Сцена тяжёлая. Рекомендуется увеличить размер пикселей (клеточек) и уменьшить тем самым разрешение.
-
-const vec3 sky_color = vec3(0.001, 0.001, 0.002);
-const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), PI / 25, vec3(1, 1, 0.1));
+// Инициализация объектов сцены
 
 const uint spaces_count = 8;
-const space_visible[spaces_count] spaces = space_visible[spaces_count](
-  space_visible(space(vec4( 3, 0, 0, 0), vec4(1, 0, 0, 0)), material(0, 0, vec3(0.443, 0.035, 0.667))),
-  space_visible(space(vec4(-3, 0, 0, 0), vec4(1, 0, 0, 0)), material(0, 0, vec3(1.0  , 1.0  , 0.0  ))),
-  space_visible(space(vec4(0,  3, 0, 0), vec4(0, 1, 0, 0)), material(0, 0, vec3(1.0  , 0.0  , 0.0  ))),
-  space_visible(space(vec4(0, -3, 0, 0), vec4(0, 1, 0, 0)), material(0, 0, vec3(0.0  , 0.8  , 0.0  ))),
-  space_visible(space(vec4(0, 0,  3, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1.0  , 1.0  , 1.0  ))),
-  space_visible(space(vec4(0, 0, -3, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1.0  , 1.0  , 1.0  ))),
-  space_visible(space(vec4(0, 0, 0,  3), vec4(0, 0, 0, 1)), material(0, 0, vec3(1.0  , 0.667, 0.0  ))),
-  space_visible(space(vec4(0, 0, 0, -3), vec4(0, 0, 0, 1)), material(0, 0, vec3(0.071, 0.251, 0.671)))
+const visible_space[spaces_count] spaces = visible_space[spaces_count](
+  visible_space(space(vec4( 3, 0, 0, 0), vec4(1, 0, 0, 0)), material(0, 0, vec3(0.44, 0.04, 0.67))),
+  visible_space(space(vec4(-3, 0, 0, 0), vec4(1, 0, 0, 0)), material(0, 0, vec3(1.0 , 1.0 , 0.0 ))),
+  visible_space(space(vec4( 0, 3, 0, 0), vec4(0, 1, 0, 0)), material(0, 0, vec3(1.0 , 0.0 , 0.0 ))),
+  visible_space(space(vec4( 0,-3, 0, 0), vec4(0, 1, 0, 0)), material(0, 0, vec3(0.0 , 0.8 , 0.0 ))),
+  visible_space(space(vec4( 0, 0, 3, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1.0 , 1.0 , 1.0 ))),
+  visible_space(space(vec4( 0, 0,-3, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1.0 , 1.0 , 1.0 ))),
+  visible_space(space(vec4( 0, 0, 0, 3), vec4(0, 0, 0, 1)), material(0, 0, vec3(1.0 , 0.67, 0.0 ))),
+  visible_space(space(vec4( 0, 0, 0,-3), vec4(0, 0, 0, 1)), material(0, 0, vec3(0.07, 0.25, 0.67)))
 );
 
 const uint spheres_count = 2;
-const sphere_visible[spheres_count] spheres = sphere_visible[spheres_count](
-  sphere_visible(sphere(vec4(0, 0, -1, 0), 1.0), material(0, 0, vec3(1, 1, 1))),
-  sphere_visible(sphere(vec4(0, 0,  3, 0), 0.8), material(1, 0, vec3(1, 1, 1)))
+const visible_sphere[spheres_count] spheres = visible_sphere[spheres_count](
+  visible_sphere(sphere(vec4(0, 0, -1, 0), 1.0), material( 0, 0, vec3(1, 1, 1))),
+  visible_sphere(sphere(vec4(0, 0,  3, 0), 0.8), material(90, 0, vec3(1, 1, 1)))
 );
+
+
+// Трассировка луча
+
+intersection find_intersection(ray ray) {
+  intersection inter = NOT_INTERSECT;
+  
+  for (int i = 0; i < spaces.length(); i++)
+    inter = closest(inter, space_intersection(spaces[i], ray));
+  
+  for (int i = 0; i < spheres.length(); i++)
+    inter = closest(inter, sphere_intersection(spheres[i], ray, true));
+  
+  return inter;
+}
+
+vec3 final_light(vec4 drct) {
+  return vec3(0);
+}

@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.0)
+set(CMAKE_CXX_STANDARD 14)
 project(ray_tracing)
 
-set(CMAKE_CXX_STANDARD 14)
-set(SFML_STATIC_LIBRARIES TRUE)
+include_directories(inc)
+set(EXECUTABLE_OUTPUT_PATH ..\\executable)
+add_executable(ray_tracing src/main.cpp src/controls.cpp src/util.cpp)
 set(SFML_ROOT_DIR «ваш путь»\\SFML-«версия»)
 
-include_directories(inc)
-add_executable(ray_tracing src/main.cpp src/controls.cpp src/util.cpp)
-
+set(SFML_STATIC_LIBRARIES TRUE)
 set(SFML_DIR ${SFML_ROOT_DIR}\\lib\\cmake\\SFML)
 find_package(SFML COMPONENTS system window graphics REQUIRED)
 include_directories(${SFML_ROOT_DIR}\\include)

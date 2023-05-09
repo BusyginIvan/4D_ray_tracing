@@ -9,12 +9,13 @@ struct orientation {
   Vec4 forward, top, right, w_drct;
 };
 
-extern bool mouseHidden;
-extern Vec4 focus;
 extern struct orientation orientation;
+extern Vec4 focus;
+extern const float focusToMtrDist, mtrHeight;
+extern bool mouseHidden, mouseJustHidden;
 
-void controlsInit(RenderWindow &mainWindow);
+void initControls(RenderWindow &mainWindow);
 void handleEvent(Event event);
-void move();
+void move(float seconds);
 
 #endif
