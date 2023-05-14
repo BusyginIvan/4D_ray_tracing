@@ -29,7 +29,7 @@ static unsigned maxMouseOffset;
 // Чувствительность мышки. Изменение угла поворота камеры при смещении курсора на один пиксель.
 static const float mouseSensitivity = PI * 0.0015f;
 // Чувствительность колёсика. Изменение угла поворота камеры при повороте колёсика на единицу.
-static const float wheelSensitivity = PI * 0.03f;
+static const float wheelSensitivity = PI / 4 / 7;
 
 // Углы, задающие ориентацию камеры (наблюдателя)
 // sph (sphere) в названии символизирует сферическую систему координат.
@@ -132,7 +132,6 @@ void initControls(RenderWindow &mainWindow) {
   window = &mainWindow;
   halfW = window->getSize().x / 2; halfH = window->getSize().y / 2;
   maxMouseOffset = max(min(halfW, halfH) - mouseBorderWidth, 50u);
-  //window->setMouseCursorVisible(true);
   buildOrientation();
 }
 

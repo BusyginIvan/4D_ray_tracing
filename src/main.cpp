@@ -13,8 +13,10 @@ const unsigned MAX_FPS = 60;
 Shader shader;
 
 struct windowParameters {
-  string title;
-  unsigned width, height, cellSize, style;
+  string title;           // Заголовок окна
+  unsigned width, height; // Ширина и высота окна в пикселях
+  unsigned cellSize;      // Размер одной клетки (большого пикселя) окрана в пикселях
+  unsigned style;         // Тип окна
 
   void scale(float multiplier) {
     width *= multiplier; height *= multiplier;
@@ -22,7 +24,7 @@ struct windowParameters {
 };
 
 struct window {
-  unsigned cellsWidth{}, cellsHeight{};
+  unsigned cellsWidth{}, cellsHeight{}; // Ширина и высота окна в клетках
   RenderWindow renderWindow;
   RenderTexture texture;
   Sprite sprite;
@@ -36,17 +38,17 @@ struct window {
     renderWindow.setFramerateLimit(MAX_FPS);
     texture.create(cellsWidth, cellsHeight);
     sprite = Sprite(texture.getTexture());
-    sprite.setScale((float) params.cellSize, (float) params.cellSize);
+    sprite.setScale(params.cellSize, params.cellSize);
   }
 
   void setPosition(const unsigned x, const unsigned y) {
-    renderWindow.setPosition(Ivec2((int) x, (int) y));
+    renderWindow.setPosition(Ivec2(x, y));
   }
 
   void display() { renderWindow.display(); }
 
   void redraw(const Vec4 top, const Vec4 right, const bool callDisplay = true) {
-    shader.setUniform("resolution", Vec2((float) cellsWidth, (float) cellsHeight));
+    shader.setUniform("resolution", Vec2(cellsWidth, cellsHeight));
     shader.setUniform("old_frame", texture.getTexture());
     shader.setUniform("top_drct", top);
     shader.setUniform("right_drct", right);

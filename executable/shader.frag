@@ -31,8 +31,7 @@ vec4 vec_in_space(vec4 vec, vec4 drct) { return vec - drct * dot(vec, drct); }
 // Вектор от точки к прямой
 vec4 vec_to_line(vec4 point, line line) {
   vec4 v1 = line.point - point;
-  float dot_v1ld = dot(v1, line.drct);
-  vec4 v2 = -dot_v1ld * line.drct;
+  vec4 v2 = -dot(v1, line.drct) * line.drct;
   return v1 + v2;
 }
 
@@ -50,7 +49,7 @@ vec4 redirect(vec4 vec, vec4 norm) {
 
 // Псевдорандом
 
-uniform int seed;   // Рандомное число передаётся извне для каждого кадра.
+uniform int seed;   // Рандомное число, получаемое извне для каждого кадра.
 uint rand_iter = 0; // Для большей хаотичности каждое вычисление рандомного числа делается уникальным.
 
 uint hash(uint x) {
@@ -185,8 +184,8 @@ struct visible_space {
 
 // Пересечение луча с пространством
 intersection space_intersection(visible_space space, ray ray) {
-  vec4 vec_cp = space.figure.point - ray.point;
-  float dot_vn = dot(vec_cp, space.figure.norm);  // Расстояние до пространства (со знаком)
+  vec4 vec_v = space.figure.point - ray.point;
+  float dot_vn = dot(vec_v, space.figure.norm);   // Расстояние до пространства (со знаком)
   vec4 drct_h = space.figure.norm * sign(dot_vn); // Единичный вектор в сторону пространства
   float cos_dh = dot(drct_h, ray.drct);  // Косинус угла между этим вектором и лучём
   if (cos_dh <= 0) return NOT_INTERSECT; // Если луч летит от пространства, пересечения нет
@@ -230,7 +229,7 @@ intersection cylinder_intersection(visible_cylinder cylinder, ray ray_in_hypersp
 }
 
 // Расстояние до плоскости осей цилиндра
-float dist_to_axes(float dist, ray ray, visible_cylinder cylinder) {
+float dist_to_axes_plane(float dist, ray ray, visible_cylinder cylinder) {
   vec4 point_in_hyperspace = ray.point + ray.drct * dist;
   vec4 point_in_space = point_in_hyperspace + vec_to_space(point_in_hyperspace, space(cylinder.point, cylinder.axis1));
   vec4 point_in_plane = point_in_space + vec_to_space(point_in_space, space(cylinder.point, cylinder.axis2));
@@ -246,11 +245,11 @@ struct visible_cylinders_union {
 // Пересечение с объединением цилиндров
 intersection cylinders_union_intersection(visible_cylinders_union cylinders_union, ray ray) {
   intersection inter1 = cylinder_intersection(cylinders_union.cylinder1, ray, true);
-  if (dist_to_axes(inter1.dist, ray, cylinders_union.cylinder2) > cylinders_union.cylinder2.r)
+  if (dist_to_axes_plane(inter1.dist, ray, cylinders_union.cylinder2) > cylinders_union.cylinder2.r)
     inter1 = NOT_INTERSECT;
 
   intersection inter2 = cylinder_intersection(cylinders_union.cylinder2, ray, true);
-  if (dist_to_axes(inter2.dist, ray, cylinders_union.cylinder1) > cylinders_union.cylinder2.r)
+  if (dist_to_axes_plane(inter2.dist, ray, cylinders_union.cylinder1) > cylinders_union.cylinder2.r)
     inter2 = NOT_INTERSECT;
 
   return closest(inter1, inter2);
@@ -281,8 +280,8 @@ intersection tigers_face_intersection(
   visible_cylinder cyl, visible_cylinder outer_cyl, visible_cylinder inner_cyl, ray ray, bool outer
 ) {
   intersection inter = cylinder_intersection(cyl, ray, outer);
-  if (dist_to_axes(inter.dist, ray, outer_cyl) > outer_cyl.r) inter = NOT_INTERSECT;
-  if (dist_to_axes(inter.dist, ray, inner_cyl) < inner_cyl.r) inter = NOT_INTERSECT;
+  if (dist_to_axes_plane(inter.dist, ray, outer_cyl) > outer_cyl.r) inter = NOT_INTERSECT;
+  if (dist_to_axes_plane(inter.dist, ray, inner_cyl) < inner_cyl.r) inter = NOT_INTERSECT;
   return inter;
 }
 
@@ -301,6 +300,63 @@ intersection tiger_intersection(visible_tiger tiger, ray ray) {
     closest(closest(inter111, inter112), closest(inter121, inter122)),
     closest(closest(inter211, inter212), closest(inter221, inter222))
   );
+}
+
+
+// Куб (трёхмерный)
+struct visible_cube {
+  space space;
+  vec4 x, y, z;
+  float r;
+  material material;
+};
+
+intersection cube_intersection(visible_cube cube, ray ray) {
+  vec4 vec_n = -cube.space.norm;
+  vec4 vec_c = cube.space.point - ray.point;
+  float h = dot(vec_c, vec_n);
+  if (h < 0) return NOT_INTERSECT;
+  float cos_dn = dot(ray.drct, vec_n);
+  if (cos_dn < 0) return NOT_INTERSECT;
+  float dist = h / cos_dn;
+  vec4 point = ray.point + ray.drct * dist;
+  vec4 vec_cp = point - cube.space.point;
+  if (abs(dot(vec_cp, cube.x)) > cube.r) return NOT_INTERSECT;
+  if (abs(dot(vec_cp, cube.y)) > cube.r) return NOT_INTERSECT;
+  if (abs(dot(vec_cp, cube.z)) > cube.r) return NOT_INTERSECT;
+  return intersection(true, dist, cube.space.norm, cube.material);
+}
+
+
+// Гиперкуб
+struct visible_hypercube {
+  visible_cube[8] cubes;
+};
+
+visible_hypercube init_hypercube(
+  vec4 point, vec4 x, vec4 y, vec4 z, vec4 w,
+  float r,
+  material mxp, material myp, material mzp, material mwp,
+  material mxn, material myn, material mzn, material mwn
+) {
+  return visible_hypercube(visible_cube[8](
+    visible_cube(space(point + x * r,  x), y, z, w, r, mxp),
+    visible_cube(space(point + y * r,  y), x, z, w, r, myp),
+    visible_cube(space(point + z * r,  z), x, y, w, r, mzp),
+    visible_cube(space(point + w * r,  w), x, y, z, r, mwp),
+    visible_cube(space(point - x * r, -x), y, z, w, r, mxn),
+    visible_cube(space(point - y * r, -y), x, z, w, r, myn),
+    visible_cube(space(point - z * r, -z), x, y, w, r, mzn),
+    visible_cube(space(point - w * r, -w), x, y, z, r, mwn)
+  ));
+}
+
+intersection hypercube_intersection(visible_hypercube hypercube, ray ray) {
+  for (int i = 0; i < 8; i++) {
+    intersection inter = cube_intersection(hypercube.cubes[i], ray);
+    if (inter.did_intersect) return inter;
+  }
+  return NOT_INTERSECT;
 }
 
 
@@ -347,6 +403,7 @@ intersection find_intersection(ray ray) {
   //  inter = closest(inter, cylinder_intersection(cylinders[i], ray, true));
   
   //inter = closest(inter, cylinders_union_intersection(cylinders_union, ray));
+  //inter = closest(inter, hypercube_intersection(hypercube, ray));
   inter = closest(inter, tiger_intersection(tiger, ray));
   
   return inter;
@@ -433,7 +490,7 @@ void main() {
   scr_coord = vec2(scr_coord.x / resolution.x, scr_coord.y / resolution.y);
 
   vec3 light = vec3(0);
-  int samples = 80;           // Число запускаемых лучей. С одним лучом фильтр цвета не имел бы смысла.
+  int samples = 80;           // Число запускаемых для каждой клетки экрана лучей. С одним лучом фильтр цвета не имел бы смысла.
   vec4 ray_drct = ray_drct();
   for(int i = 0; i < samples; i++)
     light += trace(ray(focus, ray_drct));
