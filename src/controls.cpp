@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include "main.h"
-#include "util.h"
+#include "math.h"
 
 using namespace sf;
 using namespace sf::Glsl;
