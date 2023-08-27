@@ -39,7 +39,7 @@ string Properties::getString(const string& key) {
   if (!contains(map, key)) {
     error("Error! Cannot find property \"" + key + "\".");
   }
-  cout << key << ": " << map[key] << endl;
+  //cout << key << ": " << map[key] << endl;
   return map[key];
 }
 
