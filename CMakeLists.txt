@@ -4,7 +4,7 @@ project(ray_tracing)
 
 include_directories(inc)
 set(EXECUTABLE_OUTPUT_PATH ../executable)
-add_executable(ray_tracing src/main.cpp src/controls.cpp src/util.cpp src/math.cpp)
+add_executable(ray_tracing src/main.cpp src/controls.cpp src/util.cpp src/math.cpp src/properties.cpp)
 set(SFML_ROOT_DIR lib/SFML-2.5.1)
 
 set(SFML_STATIC_LIBRARIES TRUE)

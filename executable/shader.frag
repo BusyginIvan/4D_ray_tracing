@@ -3,8 +3,6 @@
 const float PI = 3.14159265f;
 const float SMALL_FLOAT = 0.0003f; // Маленькая величина. Примерно равна 2^(-12).
 
-vec2 scr_coord; // scr (screen) – экран. Координата пикселя в окне.
-
 // Геометрические объекты
 struct line   { vec4 point, drct; };
 struct ray    { vec4 point, drct; };
@@ -49,11 +47,13 @@ vec4 redirect(vec4 vec, vec4 norm) {
 
 // Псевдорандом
 
-uniform int seed;   // Рандомное число, получаемое извне для каждого кадра.
-uint rand_iter = 0; // Для большей хаотичности каждое вычисление рандомного числа делается уникальным.
+vec2 scr_coord;      // scr (screen) – экран. Координата пикселя в окне.
+uniform int seed;    // Рандомное число, получаемое извне для каждого кадра.
+uint rand_iter = 0;  // Для большей хаотичности каждое вычисление рандомного числа делается уникальным.
 
 uint hash(uint x) {
-  x += rand_iter++;
+  rand_iter += 13;
+  x += rand_iter;
   x += ( x << 10u );
   x ^= ( x >>  6u );
   x += ( x <<  3u );
@@ -61,7 +61,7 @@ uint hash(uint x) {
   x += ( x << 15u );
   return x;
 }
-uint hash(uvec2 v) { return hash( v.x ^ hash(v.y) ); }
+uint hash(uvec2 v) { return hash(seed + v.x ^ v.y); }
 
 float floatConstruct(uint m) {
   const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
@@ -72,9 +72,8 @@ float floatConstruct(uint m) {
   return f - 1.0;                        // Range [0:1]
 }
 
-// Рандомное число по вектору. По умолчанию используются координаты пикселя.
-float rand(vec2 v)  { return floatConstruct(hash(floatBitsToUint(v))); }
-float rand() { return rand(scr_coord + seed); }
+// Псевдорандомное число
+float rand()  { return floatConstruct(hash(floatBitsToUint(scr_coord))); }
 
 // Случайный исход
 bool rand_outcome(float probability) { return rand() > probability ? false : true; }
@@ -429,11 +428,11 @@ vec3 final_light(vec4 drct) {
 }
 
 // Трассировка луча. Возвращает свет, прилетающий по лучу.
+uniform int reflections_amount; // Максимальное число переотражений
 vec3 trace(ray ray) {
-  const uint reflections_amount = 4;    // Максимальное число переотражений
   vec3 result_light = vec3(0);          // Свет, дошедший в сумме от источников
   vec3 unabsorbed_light_part = vec3(1); // Доли света, не поглощённого при переотражениях луча
-  for (int i = 0; i <= reflections_amount; i++) {
+  for (uint i = 0; i <= reflections_amount; i++) {
     intersection inter = find_intersection(ray);
 
     if (!inter.did_intersect) {
@@ -461,7 +460,6 @@ vec3 trace(ray ray) {
 
 // mtr (matrix) – матрица, как у фотоаппарата; виртуальное представление нашего экрана в пространстве.
 uniform vec2 mtr_sizes; // Ширина и высота матрицы в единицах пространства сцены
-
 uniform vec4 focus; // Фокус – точка схождения лучей за матрицей. В фотоаппарате он перед матрицей, а у нас лучи от этой точки летят.
 uniform vec4 vec_to_mtr;           // Вектор от фокуса до середины матрицы.
 uniform vec4 top_drct, right_drct; // Единичные векторы по направлению вверх и вправо для наблюдателя.
@@ -475,14 +473,15 @@ vec4 ray_drct() {
 
 // Преобразование света в цвет для пикселя
 // Свет может быть от нуля до бесконечности, а цвет лишь от нуля до единицы.
+uniform float light_to_color_conversion_coefficient; // Чем больше эта константа, тем будет светлее.
 vec3 light_to_color(vec3 light) {
-  const float k = 0.8; // Чем больше эта константа, тем будет светлее.
-  return 1 - 1 / (k * light + 1);
+  return 1 - 1 / (light_to_color_conversion_coefficient * light + 1);
 }
 
 uniform vec2 resolution;     // Ширина и высота экрана (окна) в пикселях
 uniform sampler2D old_frame; // Информация о предыдущем кадре
 uniform float part;          // Доля текущего кадра в результирующем изображении
+uniform int samples;         // Число запускаемых для каждой клетки экрана лучей
 
 void main() {
   // Координата на экране
@@ -490,9 +489,8 @@ void main() {
   scr_coord = vec2(scr_coord.x / resolution.x, scr_coord.y / resolution.y);
 
   vec3 light = vec3(0);
-  int samples = 80;           // Число запускаемых для каждой клетки экрана лучей. С одним лучом фильтр цвета не имел бы смысла.
   vec4 ray_drct = ray_drct();
-  for(int i = 0; i < samples; i++)
+  for (uint i = 0; i < samples; i++)
     light += trace(ray(focus, ray_drct));
   light /= samples;
 

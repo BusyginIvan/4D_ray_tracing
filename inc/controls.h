@@ -5,13 +5,13 @@
 using namespace sf;
 using namespace sf::Glsl;
 
-struct orientation {
+struct Orientation {
   Vec4 forward, top, right, w_drct;
 };
 
-extern struct orientation orientation;
+extern Orientation orientation;
 extern Vec4 focus;
-extern const float focusToMtrDist, mtrHeight;
+extern float focusToMtrDist, mtrHeight;
 extern bool mouseHidden, mouseJustHidden;
 
 void initControls(RenderWindow &mainWindow);

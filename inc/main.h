@@ -1,6 +1,9 @@
 #ifndef RAY_TRACING_MAIN_H
 #define RAY_TRACING_MAIN_H
 
-extern unsigned int frameNumber;
+#include "properties.h"
+
+extern Properties properties;
+extern unsigned int frameNumber; // Номер кадра с тех пор, как камера неподвижна
 
 #endif
