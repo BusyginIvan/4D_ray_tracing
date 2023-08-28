@@ -1,14 +1,14 @@
 // Инициализация объектов сцены
 
 const vec3 sky_light = vec3(0.4, 0.6, 1.53);
-const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), PI * 0.09, vec3(2100, 1000, 20));
+const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), PI * 0.09, vec3(2100, 1000, 20), 0.0);
 
 const uint spaces_count = 1;
 const visible_space[spaces_count] spaces = visible_space[spaces_count](
   visible_space(space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1, 1, 1)))
 );
 
-const visible_hypercube hypercube = init_hypercube(
+visible_hypercube hypercube = init_hypercube(
   vec4(0, 4, 0, 0),
   vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), vec4(0, 0, 0, 1),
   1,
@@ -35,19 +35,3 @@ intersection find_intersection(ray ray) {
   
   return inter;
 }
-
-vec3 final_light(vec4 drct) {
-  float deviation = angle(drct, sun.drct);
-  if (deviation < sun.angular_size) {
-    float k = deviation / sun.angular_size, m = 0;
-    k = (m * m * k / (1 - m * k) + 1) * (1 - k);
-    return sun.light * k + sky_light * (1 - k);
-  } else {
-    return sky_light;
-  }
-}
-
-
-// Также желательно...
-const uint reflections_amount = 3; // Максимальное число переотражений
-int samples = 200; // Число запускаемых для каждой клетки экрана лучей

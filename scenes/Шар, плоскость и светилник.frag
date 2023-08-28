@@ -1,7 +1,7 @@
 // Инициализация объектов сцены
 
 const vec3 sky_light = vec3(0.02, 0.06, 0.12);
-const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), PI * 0.09, vec3(10, 10, 0.95));
+const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), PI * 0.09, vec3(10, 10, 0.95), 0.8);
 
 const uint spaces_count = 1;
 const visible_space[spaces_count] spaces = visible_space[spaces_count](
@@ -27,15 +27,4 @@ intersection find_intersection(ray ray) {
     inter = closest(inter, sphere_intersection(spheres[i], ray, true));
   
   return inter;
-}
-
-vec3 final_light(vec4 drct) {
-  float deviation = angle(drct, sun.drct);
-  if (deviation < sun.angular_size) {
-    float k = deviation / sun.angular_size, m = 0.8;
-    k = (m * m * k / (1 - m * k) + 1) * (1 - k);
-    return sun.light * k + sky_light * (1 - k);
-  } else {
-    return sky_light;
-  }
 }

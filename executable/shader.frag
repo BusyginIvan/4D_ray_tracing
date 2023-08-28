@@ -363,13 +363,14 @@ struct sun_properties {
   vec4  drct;         // Направление, в котором находится солнце
   float angular_size; // Угловой размер солнца
   vec3  light;        // Испускаемый солнцем свет
+  float sharpness;    // Если 1, солнце становится ровным одноцветным кругом. Чем ближе к нулю, тем сильнее оно размывается.
 };
 
 
 // Инициализация объектов сцены
 
 const vec3 sky_light = vec3(0.2, 0.6, 1.2);
-const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), PI * 0.09, vec3(500, 500, 10));
+const sun_properties sun = sun_properties(vec4(0, 1, 1, 0), PI * 0.09, vec3(500, 500, 10), 0.0);
 
 const uint spaces_count = 1;
 const visible_space[spaces_count] spaces = visible_space[spaces_count](
@@ -416,10 +417,8 @@ vec3 final_light(vec4 drct) {
   float deviation = angle(drct, sun.drct);
   if (deviation < sun.angular_size) {
     // Нетривиальный градиент, чтобы солнышко было красивым.
-    // Если m = 1, солнце становится просто одноцветным кругом.
-    // Чем ближе m к нулю, тем сильнее солнце размывается.
-    float k = deviation / sun.angular_size, m = 0;
-    k = (m * m * k / (1 - m * k) + 1) * (1 - k);
+    float k = deviation / sun.angular_size, s = sun.sharpness;
+    k = (s * s * k / (1 - s * k) + 1) * (1 - k);
     return sun.light * k + sky_light * (1 - k);
   } else {
     return sky_light;
