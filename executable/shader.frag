@@ -203,9 +203,8 @@ struct visible_cylinder {
 // Пересечение с цилиндром
 // outer: если false, луч, летящий снаружи, пролетит переднюю стенку насквозь.
 intersection cylinder_intersection(visible_cylinder cylinder, ray ray_in_hyperspace, bool outer) {
-  vec4 vec_to_space = vec_to_space(ray_in_hyperspace.point, space(cylinder.point, cylinder.axis1));
   ray ray_in_space = ray(
-    ray_in_hyperspace.point + vec_to_space,
+    ray_in_hyperspace.point + vec_to_space(ray_in_hyperspace.point, space(cylinder.point, cylinder.axis1)),
     vec_in_space(ray_in_hyperspace.drct, cylinder.axis1)
   );
   if (length(ray_in_space.drct) == 0) return NOT_INTERSECT;
@@ -377,7 +376,7 @@ const visible_space[spaces_count] spaces = visible_space[spaces_count](
   visible_space(space(vec4(0, 0, -1.5, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(0.4, 0.25, 0.07)))
 );
 
-const visible_tiger tiger = init_tiger(
+visible_tiger tiger = init_tiger(
   vec4(0, 2, 0, 0),
   vec4(1, 0, 0, 0), vec4(0, 0, 0, 1), vec4(0, 0, 1, 0), vec4(0, 1, 0, 0),
   0.9, 1.4,
