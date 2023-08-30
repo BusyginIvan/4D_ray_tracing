@@ -170,15 +170,15 @@ int main() {
         shader.setUniform("vec_to_mtr", mulVN(orientation.forward, focusToMtrDist));
       }
 
+      winYXZ.drawShaderImage(orientation.top, orientation.right);
       winYWZ.drawShaderImage(orientation.top, orientation.w_drct);
       winYXW.drawShaderImage(orientation.w_drct, orientation.right);
-      winYXZ.drawShaderImage(orientation.top, orientation.right);
 
       float seconds = timer.restart().asSeconds();
       move(seconds);
       winYXZ.drawFPS(seconds);
 
-      winYWZ.display(); winYXW.display(); winYXZ.display();
+      winYXZ.display(); winYWZ.display(); winYXW.display();
     }
   }
   return 0;

@@ -52,7 +52,7 @@ uniform int seed;    // Рандомное число, получаемое из
 uint rand_iter = 0;  // Для большей хаотичности каждое вычисление рандомного числа делается уникальным.
 
 uint hash(uint x) {
-  rand_iter += 13;
+  rand_iter += 23652437;
   x += rand_iter;
   x += ( x << 10u );
   x ^= ( x >>  6u );
@@ -61,7 +61,7 @@ uint hash(uint x) {
   x += ( x << 15u );
   return x;
 }
-uint hash(uvec2 v) { return hash(seed + v.x ^ v.y); }
+uint hash(uvec2 v) { return hash(seed + v.x ^ (v.y << 8)); }
 
 float floatConstruct(uint m) {
   const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
