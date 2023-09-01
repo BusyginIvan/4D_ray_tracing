@@ -21,7 +21,33 @@ static unsigned maxMouseOffset;
 
 // Углы, задающие ориентацию камеры (наблюдателя)
 // sph (sphere) в названии символизирует сферическую систему координат.
-static struct { float te = 0, fi = 0, psi = 0; } sphOrientation;
+static struct {
+  float fi, te, psi;
+
+  void normalizeFi() {
+    fi = remainder(fi, 2 * PI);
+    if (fi < -PI) fi += 2 * PI;
+    if (fi >  PI) fi -= 2 * PI;
+  }
+
+  void normalizeTe() {
+    if (te < -PI / 2) te = -PI / 2;
+    if (te >  PI / 2) te =  PI / 2;
+  }
+
+  void normalizePsi() {
+    if (psi < -PI/4) psi = -PI/4;
+    if (psi >  PI/4) psi =  PI/4;
+  }
+
+  void normalize() { normalizeFi(); normalizeTe(); normalizePsi(); }
+
+  void changeFi (const float delta) { fi  += delta; normalizeFi();  }
+  void changeTe (const float delta) { te  += delta; normalizeTe();  }
+  void changePsi(const float delta) { psi += delta; normalizePsi(); }
+
+} sphOrientation;
+
 // Единичные векторы, характеризующие ориентацию наблюдателя: куда он смотрит, где у него право, верх...
 // Вычисляется по sphOrientation.
 struct Orientation orientation;
@@ -35,42 +61,22 @@ static void rotate(const float angle, Vec4* const x, Vec4* const y) {
 }
 
 // Построение направляющих по углам поворота камеры
-static void updateOrientation() {
-  orientation = {
-    .forward = Vec4(0, 1, 0, 0),
-    .top     = Vec4(0, 0, 1, 0),
-    .right   = Vec4(1, 0, 0, 0),
-    .w_drct  = Vec4(0, 0, 0, 1),
-  };
-  rotate(sphOrientation.psi, &orientation.top    , &orientation.w_drct );
-  rotate(sphOrientation.fi , &orientation.right  , &orientation.forward);
-  rotate(sphOrientation.te , &orientation.forward, &orientation.top    );
-}
+void Orientation::update() {
+  forward = Vec4(0, 1, 0, 0),
+  top     = Vec4(0, 0, 1, 0),
+  right   = Vec4(1, 0, 0, 0),
+  w_drct  = Vec4(0, 0, 0, 1),
 
-// Изменение углов поворота камеры
-static void changeSphViewDrct(const float dTe, const float dFi) {
-  sphOrientation.te += dTe;
-  if (sphOrientation.te < -PI / 2) sphOrientation.te = -PI / 2;
-  if (sphOrientation.te >  PI / 2) sphOrientation.te =  PI / 2;
-
-  sphOrientation.fi += dFi;
-  if (sphOrientation.fi < -PI) sphOrientation.fi += 2 * PI;
-  if (sphOrientation.fi >  PI) sphOrientation.fi -= 2 * PI;
-}
-
-static void changeSphViewDrct(const float dPsi) {
-  sphOrientation.psi += dPsi;
-  if (sphOrientation.psi < -PI/4) sphOrientation.psi = -PI/4;
-  if (sphOrientation.psi >  PI/4) sphOrientation.psi =  PI/4;
+  rotate(sphOrientation.psi, &top    , &w_drct );
+  rotate(sphOrientation.fi , &right  , &forward);
+  rotate(sphOrientation.te , &forward, &top    );
 }
 
 
 // Всё, что касается клавиатуры, перемещения и положения камеры в пространстве
 
-// Координаты точки фокуса за матрицей, откуда исходят все лучи при рейтрейсинге
-Vec4 focus = Vec4(0, -focusToMtrDist, 0, 0);
-// Константа, позволяющая регулировать скорость перемещения камеры
-static float movementSpeed;
+Vec4 focus; // Координаты точки фокуса за матрицей, откуда исходят все лучи при рейтрейсинге
+static float movementSpeed; // Константа, позволяющая регулировать скорость перемещения камеры
 
 // Тут хранится состояние всех клавиш, отвечающих за перемещение: пока клавиша нажата, камера двигается.
 static struct {
@@ -121,16 +127,27 @@ static unsigned halfW, halfH; // Половины ширины и высоты �
 void initControls(RenderWindow &mainWindow) {
   window = &mainWindow;
   halfW = window->getSize().x / 2; halfH = window->getSize().y / 2;
-  updateOrientation();
-
-  focusToMtrDist = properties.getFloat("focus_to_matrix_distance");
-  mtrHeight = properties.getFloat("matrix_height");
 
   maxMouseOffset = max(min(halfW, halfH) - properties.getUnsignedInt("mouse_border_width"), 50u);
   mouseSensitivity = properties.getFloat("mouse_sensitivity");
   wheelSensitivity = properties.getFloat("wheel_sensitivity");
 
   movementSpeed = properties.getFloat("movement_speed");
+
+  focusToMtrDist = properties.getFloat("focus_to_matrix_distance");
+  mtrHeight = properties.getFloat("matrix_height");
+
+  float x = properties.getFloat("initial_camera_position.x");
+  float y = properties.getFloat("initial_camera_position.y");
+  float z = properties.getFloat("initial_camera_position.z");
+  float w = properties.getFloat("initial_camera_position.w");
+  focus = focus = Vec4(x, y - focusToMtrDist, z, w);
+
+  sphOrientation.fi = properties.getFloat("initial_camera_position.fi");
+  sphOrientation.te = properties.getFloat("initial_camera_position.te");
+  sphOrientation.psi = properties.getFloat("initial_camera_position.psi");
+  sphOrientation.normalize();
+  orientation.update();
 }
 
 // Обработка событий
@@ -151,8 +168,9 @@ void handleEvent(Event event) {
         if (abs(dx) > maxMouseOffset || abs(dy) > maxMouseOffset)
           centerMouseCursor();
         else if (dx != 0 || dy != 0) {
-          changeSphViewDrct(dy * mouseSensitivity, -dx * mouseSensitivity);
-          updateOrientation(); frameNumber = 1;
+          sphOrientation.changeFi(-dx * mouseSensitivity);
+          sphOrientation.changeTe( dy * mouseSensitivity);
+          orientation.update(); frameNumber = 1;
           centerMouseCursor();
         }
       }
@@ -160,8 +178,8 @@ void handleEvent(Event event) {
 
     case Event::MouseWheelScrolled:
       if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
-        changeSphViewDrct(event.mouseWheelScroll.delta * wheelSensitivity);
-        updateOrientation(); frameNumber = 1;
+        sphOrientation.changePsi(event.mouseWheelScroll.delta * wheelSensitivity);
+        orientation.update(); frameNumber = 1;
       }
       break;
 
