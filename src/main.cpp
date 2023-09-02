@@ -1,118 +1,26 @@
-#include "main.h"
-#include <SFML/Graphics.hpp>
-#include <iostream>
-#include <iomanip>
 #include "controls.h"
-#include "math.h"
-#include "util.h"
+#include "util/math.h"
+#include "util/util.h"
+#include "windows/windows.h"
+#include "windows/three_window_group.h"
+#include "windows/single_window_group.h"
+#include <SFML/Graphics.hpp>
 
+using namespace sf;
 using namespace sf::Glsl;
 using namespace std;
 
 Properties properties("properties.txt");
-unsigned int frameNumber = 1;
+Shader shader;
+Font font;
+Text text;
 
-static const unsigned
-  MAX_FPS = properties.getUnsignedInt("max_fps"),
-  WIN_TITLE_HEIGHT = properties.getUnsignedInt("window_title_height"),
-  TASK_BAR_HEIGHT = properties.getUnsignedInt("task_bar_height"),
-  SCREEN_WIDTH = VideoMode::getDesktopMode().width,
-  SCREEN_HEIGHT = VideoMode::getDesktopMode().height - TASK_BAR_HEIGHT - WIN_TITLE_HEIGHT;
-
-static Shader shader;
-static Font font;
-static Text text;
-
-struct WindowParameters {
-  string windowType;      // Тип окна: main, additional
-  unsigned style;         // Тип окна: с шапкой или без
-  string title;           // Заголовок окна
-  unsigned width, height; // Ширина и высота окна в пикселях
-  unsigned cellSize;      // Размер одной клетки (большого пикселя) изображения в пикселях
-
-  WindowParameters(const string& _windowType, unsigned _style) {
-    windowType = _windowType;
-    style = _style;
-    title = properties.getStringOrNull(fullPropertyName("title"));
-    width = properties.getUnsignedInt(fullPropertyName("width"));
-    height = width / GOLDEN;
-    cellSize = properties.getUnsignedInt(fullPropertyName("cell_size"));
-  }
-
-  string fullPropertyName(const string& propertyName) {
-    return "window." + windowType + "." + propertyName;
-  }
-
-  void scale(float multiplier) {
-    width *= multiplier; height *= multiplier;
-  }
-};
-
-struct CellsWindow {
-  unsigned cellsWidth{}, cellsHeight{}; // Ширина и высота окна в клетках
-  RenderWindow renderWindow;
-  RenderTexture texture;
-  Sprite sprite;
-
-  CellsWindow(struct WindowParameters &params) {
-    cellsWidth  = params.width  / params.cellSize;
-    cellsHeight = params.height / params.cellSize;
-    params.width  = cellsWidth  * params.cellSize;
-    params.height = cellsHeight * params.cellSize;
-    renderWindow.create(VideoMode(params.width, params.height), params.title, params.style);
-    renderWindow.setFramerateLimit(MAX_FPS);
-    texture.create(cellsWidth, cellsHeight);
-    sprite = Sprite(texture.getTexture());
-    sprite.setScale(params.cellSize, params.cellSize);
-  }
-
-  void setPosition(const unsigned x, const unsigned y) {
-    renderWindow.setPosition(Ivec2(x, y));
-  }
-
-  void display() { renderWindow.display(); }
-
-  void drawShaderImage(const Vec4 top, const Vec4 right) {
-    shader.setUniform("resolution", Vec2(cellsWidth, cellsHeight));
-    shader.setUniform("old_frame", texture.getTexture());
-    shader.setUniform("top_drct", top);
-    shader.setUniform("right_drct", right);
-    texture.draw(sprite, &shader);
-    renderWindow.draw(sprite);
-  }
-
-  void drawFPS(float seconds) {
-    stringstream ss; ss << "FPS: " << setw(5) << setprecision(1) << fixed << 1 / seconds;
-    text.setString(ss.str());
-    renderWindow.draw(text);
-  }
-};
-
-static void scaleWindows(WindowParameters& mainWinParams, WindowParameters& additionalWinParams) {
-  const float multiplier = min(
-    1.0f,
-    (float) SCREEN_HEIGHT / (mainWinParams.height + additionalWinParams.height),
-    (float) SCREEN_WIDTH / 2 / additionalWinParams.width,
-    (float) SCREEN_WIDTH / mainWinParams.width
-  );
-  mainWinParams.scale(multiplier);
-  additionalWinParams.scale(multiplier);
-}
-
-static void setWindowPositions(
-  CellsWindow& winYXZ,
-  CellsWindow& winYWZ,
-  CellsWindow& winYXW,
-  WindowParameters& mainWinParams,
-  WindowParameters& additionalWinParams
-) {
-  const unsigned indentX = (SCREEN_WIDTH - additionalWinParams.width * 2) / 3;
-  const unsigned indentY = (SCREEN_HEIGHT - mainWinParams.height - additionalWinParams.height) / 3;
-  const unsigned additionalWinY = mainWinParams.height + WIN_TITLE_HEIGHT + indentY * 2;
-  winYXZ.setPosition((SCREEN_WIDTH - mainWinParams.width) / 2, indentY       );
-  winYWZ.setPosition(indentX                                , additionalWinY);
-  winYXW.setPosition(additionalWinParams.width + indentX * 2, additionalWinY);
-}
+unsigned
+  maxFPS = properties.getUnsignedInt("max_fps"),
+  winTitleHeight = properties.getUnsignedInt("window_title_height"),
+  taskBarHeight = properties.getUnsignedInt("task_bar_height"),
+  screenWidth = VideoMode::getDesktopMode().width,
+  screenHeight = VideoMode::getDesktopMode().height - taskBarHeight - winTitleHeight;
 
 static void initShader() {
   shader.loadFromFile(properties.getString("shader.filename"), Shader::Fragment);
@@ -137,24 +45,31 @@ static void initText() {
 }
 
 int main() {
-  WindowParameters mainWinParams("main", Style::Close);
-  WindowParameters additionalWinParams("additional", Style::None);
-  scaleWindows(mainWinParams, additionalWinParams); // Корректировки на случай, если экран слишком маленький
+  unsigned frameNumber = 1; // Номер кадра с тех пор, как камера неподвижна
 
-  CellsWindow winYXZ(mainWinParams);
-  CellsWindow winYWZ(additionalWinParams);
-  CellsWindow winYXW(additionalWinParams);
-  setWindowPositions(winYXZ, winYWZ, winYXW, mainWinParams, additionalWinParams);
+  bool threeWindows = properties.getBool("show_additional_windows");
+  ThreeWindowGroup* threeWindowGroup;
+  SingleWindowGroup* singleWindowGroup;
 
-  initControls(winYXZ.renderWindow);
+  WindowGroup* windowGroup;
+  if (threeWindows) {
+    threeWindowGroup = new ThreeWindowGroup;
+    windowGroup = threeWindowGroup;
+  } else {
+    singleWindowGroup = new SingleWindowGroup;
+    windowGroup = singleWindowGroup;
+  }
+  RenderWindow& mainRenderWindow = windowGroup->getMainWindow().renderWindow;
+
+  initControls(mainRenderWindow, frameNumber);
   initShader();
   initText();
 
   Clock timer;
-  while (winYXZ.renderWindow.isOpen())
+  while (mainRenderWindow.isOpen())
   {
     Event event{};
-    while (winYXZ.renderWindow.pollEvent(event))
+    while (mainRenderWindow.pollEvent(event))
       handleEvent(event);
 
     if (mouseHidden) {
@@ -170,16 +85,21 @@ int main() {
         shader.setUniform("vec_to_mtr", mulVN(orientation.forward, focusToMtrDist));
       }
 
-      winYXZ.drawShaderImage(orientation.top, orientation.right);
-      winYWZ.drawShaderImage(orientation.top, orientation.w_drct);
-      winYXW.drawShaderImage(orientation.w_drct, orientation.right);
+      windowGroup->drawShaderImage();
 
       float seconds = timer.restart().asSeconds();
       move(seconds);
-      winYXZ.drawFPS(seconds);
+      windowGroup->getMainWindow().drawFPS(seconds);
 
-      winYXZ.display(); winYWZ.display(); winYXW.display();
+      windowGroup->display();
     }
   }
+
+  if (threeWindows) {
+    delete(threeWindowGroup);
+  } else {
+    delete(singleWindowGroup);
+  }
+
   return 0;
 }

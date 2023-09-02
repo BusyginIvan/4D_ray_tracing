@@ -1,15 +1,17 @@
 #include "controls.h"
-#include <cmath>
 #include "main.h"
-#include "math.h"
+#include "util/math.h"
+#include <cmath>
 
 using namespace sf;
 using namespace sf::Glsl;
 using namespace std;
 
-RenderWindow* window;
 float focusToMtrDist, mtrHeight;
 bool mouseHidden = false, mouseJustHidden = false;
+
+static RenderWindow* window;
+static unsigned* frameNumber;
 
 
 // Всё, что касается мышки и поворота камеры
@@ -110,7 +112,7 @@ void move(const float seconds) {
   float drctLength = mod(drct);
   if (drctLength > 0) {
     focus = sum(focus, mulVN(drct, seconds * movementSpeed / drctLength));
-    frameNumber = 1;
+    *frameNumber = 1;
   }
 }
 
@@ -118,9 +120,10 @@ void move(const float seconds) {
 // Инициализация
 static unsigned halfW, halfH; // Половины ширины и высоты основного окна
 
-void initControls(RenderWindow &mainWindow) {
+void initControls(RenderWindow& mainWindow, unsigned& frameNumberCounter) {
   window = &mainWindow;
   halfW = window->getSize().x / 2; halfH = window->getSize().y / 2;
+  frameNumber = &frameNumberCounter;
 
   maxMouseOffset = max(min(halfW, halfH) - properties.getUnsignedInt("mouse_border_width"), 50u);
   mouseSensitivity = properties.getFloat("mouse_sensitivity");
@@ -177,7 +180,7 @@ void handleEvent(Event event) {
         else if (dx != 0 || dy != 0) {
           sphOrientation.changeFi(-dx * mouseSensitivity);
           sphOrientation.changeTe( dy * mouseSensitivity);
-          orientation.update(); frameNumber = 1;
+          orientation.update(); *frameNumber = 1;
           centerMouseCursor();
         }
       }
@@ -186,7 +189,7 @@ void handleEvent(Event event) {
     case Event::MouseWheelScrolled:
       if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
         sphOrientation.changePsi(event.mouseWheelScroll.delta * wheelSensitivity);
-        orientation.update(); frameNumber = 1;
+        orientation.update(); *frameNumber = 1;
       }
       break;
 

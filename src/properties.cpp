@@ -1,8 +1,8 @@
 #include "properties.h"
+#include "util/util.h"
 #include <fstream>
 #include <string>
 #include <iomanip>
-#include "util.h"
 
 using namespace std;
 
