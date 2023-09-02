@@ -7,6 +7,7 @@ using namespace sf::Glsl;
 
 struct Orientation {
   Vec4 forward, top, right, w_drct;
+  Vec4 horizontalForward, horizontalRight, verticalTop;
   void update();
 };
 

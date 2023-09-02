@@ -56,9 +56,14 @@ void Orientation::update() {
   right   = Vec4(1, 0, 0, 0),
   w_drct  = Vec4(0, 0, 0, 1),
 
-  rotate(sphOrientation.psi, &top    , &w_drct );
-  rotate(sphOrientation.fi , &right  , &forward);
-  rotate(sphOrientation.te , &forward, &top    );
+  rotate(sphOrientation.psi, &top, &w_drct);
+  verticalTop = top;
+
+  rotate(sphOrientation.fi, &right, &forward);
+  horizontalForward = forward;
+  horizontalRight = right;
+
+  rotate(sphOrientation.te, &forward, &top);
 }
 
 
@@ -93,14 +98,14 @@ static void handleKey(const Event event, const bool state) {
 // Перемещение камеры. Вызывается из главного цикла приложения.
 void move(const float seconds) {
   Vec4 drct = Vec4(0, 0, 0, 0);
-  if (moveState.forward ) drct = sum(drct, orientation.forward);
-  if (moveState.back    ) drct = dif(drct, orientation.forward);
-  if (moveState.top     ) drct = sum(drct, orientation.top    );
-  if (moveState.down    ) drct = dif(drct, orientation.top    );
-  if (moveState.right   ) drct = sum(drct, orientation.right  );
-  if (moveState.left    ) drct = dif(drct, orientation.right  );
-  if (moveState.wDrctPos) drct = sum(drct, orientation.w_drct );
-  if (moveState.wDrctNeg) drct = dif(drct, orientation.w_drct );
+  if (moveState.forward ) drct = sum(drct, orientation.horizontalForward);
+  if (moveState.back    ) drct = dif(drct, orientation.horizontalForward);
+  if (moveState.top     ) drct = sum(drct, orientation.verticalTop      );
+  if (moveState.down    ) drct = dif(drct, orientation.verticalTop      );
+  if (moveState.right   ) drct = sum(drct, orientation.horizontalRight  );
+  if (moveState.left    ) drct = dif(drct, orientation.horizontalRight  );
+  if (moveState.wDrctPos) drct = sum(drct, orientation.w_drct           );
+  if (moveState.wDrctNeg) drct = dif(drct, orientation.w_drct           );
 
   float drctLength = mod(drct);
   if (drctLength > 0) {

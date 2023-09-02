@@ -6,7 +6,7 @@
 
 using namespace std;
 
-void __MINGW_ATTRIB_NORETURN error(const string message) {
+void __MINGW_ATTRIB_NORETURN error(const string& message) {
   cerr << message;
   abort();
 }

@@ -5,7 +5,7 @@
 #include <unordered_map>
 using namespace std;
 
-void __MINGW_ATTRIB_NORETURN error(const string message);
+void __MINGW_ATTRIB_NORETURN error(const string& message);
 
 bool contains(unordered_map<string, string>& map, const string& key);
 
