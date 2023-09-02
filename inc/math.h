@@ -16,6 +16,9 @@ Vec4 divVN(Vec4 v, float l);
 float dot(Vec4 v1, Vec4 v2);
 float mod(Vec4 v);
 Vec4 normalize(Vec4 v);
+
 float min(float a, float b, float c, float d);
+void pullIntoRange(float& f, const float center, const float r);
+void normalizeAngle(float& angle);
 
 #endif

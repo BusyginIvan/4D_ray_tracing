@@ -14,6 +14,7 @@ struct Properties {
   int getInt(const string& key);
   unsigned getUnsignedInt(const string& key);
   float getFloat(const string& key);
+  bool getBool(const string& key);
 };
 
 #endif

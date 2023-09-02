@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <algorithm>
 
 using namespace std;
 
@@ -41,4 +42,16 @@ string trim(const string& str, const string& whitespace = " \t") {
   const auto strEnd = str.find_last_not_of(whitespace);
   const auto strRange = strEnd - strBegin + 1;
   return str.substr(strBegin, strRange);
+}
+
+string toUpperCase(const string& str) {
+  string result = str;
+  transform(result.begin(), result.end(), result.begin(), ::toupper);
+  return result;
+}
+
+string toLowerCase(const string& str) {
+  string result = str;
+  transform(result.begin(), result.end(), result.begin(), ::tolower);
+  return result;
 }

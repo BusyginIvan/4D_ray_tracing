@@ -22,30 +22,19 @@ static unsigned maxMouseOffset;
 // Углы, задающие ориентацию камеры (наблюдателя)
 // sph (sphere) в названии символизирует сферическую систему координат.
 static struct {
-  float fi, te, psi;
+  float fi, te, psi, startPsi;
+  void (*psiNormalization)(float&);
 
-  void normalizeFi() {
-    fi = remainder(fi, 2 * PI);
-    if (fi < -PI) fi += 2 * PI;
-    if (fi >  PI) fi -= 2 * PI;
-  }
+  void initStartPsi() { startPsi = psi; normalizeAngle(startPsi); }
 
-  void normalizeTe() {
-    if (te < -PI / 2) te = -PI / 2;
-    if (te >  PI / 2) te =  PI / 2;
-  }
-
-  void normalizePsi() {
-    if (psi < -PI/4) psi = -PI/4;
-    if (psi >  PI/4) psi =  PI/4;
-  }
-
+  void normalizeFi() { normalizeAngle(fi); }
+  void normalizeTe() { pullIntoRange(te, 0, PI / 2); }
+  void normalizePsi() { psiNormalization(psi); }
   void normalize() { normalizeFi(); normalizeTe(); normalizePsi(); }
 
   void changeFi (const float delta) { fi  += delta; normalizeFi();  }
   void changeTe (const float delta) { te  += delta; normalizeTe();  }
   void changePsi(const float delta) { psi += delta; normalizePsi(); }
-
 } sphOrientation;
 
 // Единичные векторы, характеризующие ориентацию наблюдателя: куда он смотрит, где у него право, верх...
@@ -137,15 +126,28 @@ void initControls(RenderWindow &mainWindow) {
   focusToMtrDist = properties.getFloat("focus_to_matrix_distance");
   mtrHeight = properties.getFloat("matrix_height");
 
-  float x = properties.getFloat("initial_camera_position.x");
-  float y = properties.getFloat("initial_camera_position.y");
-  float z = properties.getFloat("initial_camera_position.z");
-  float w = properties.getFloat("initial_camera_position.w");
-  focus = focus = Vec4(x, y - focusToMtrDist, z, w);
+  focus = Vec4(
+    properties.getFloat("initial_camera_position.x"),
+    properties.getFloat("initial_camera_position.y") - focusToMtrDist,
+    properties.getFloat("initial_camera_position.z"),
+    properties.getFloat("initial_camera_position.w")
+  );
 
-  sphOrientation.fi = properties.getFloat("initial_camera_position.fi");
-  sphOrientation.te = properties.getFloat("initial_camera_position.te");
-  sphOrientation.psi = properties.getFloat("initial_camera_position.psi");
+  sphOrientation = {
+    .fi = properties.getFloat("initial_camera_position.fi"),
+    .te = properties.getFloat("initial_camera_position.te"),
+    .psi = properties.getFloat("initial_camera_position.psi"),
+  };
+
+  if (properties.getBool("constrain_psi_range")) {
+    sphOrientation.initStartPsi();
+    sphOrientation.psiNormalization = [](float &psi) {
+      pullIntoRange(psi, sphOrientation.startPsi, PI / 4);
+    };
+  } else {
+    sphOrientation.psiNormalization = normalizeAngle;
+  }
+
   sphOrientation.normalize();
   orientation.update();
 }

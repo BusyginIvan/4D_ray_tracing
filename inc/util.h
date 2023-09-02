@@ -13,5 +13,7 @@ bool contains(const string& str, const string& substr);
 string takeBefore(const string& str, const string& sep);
 pair<string, string> split(const string& str, const string& sep);
 string trim(const string& str, const string& whitespace = " \t");
+string toUpperCase(const string& str);
+string toLowerCase(const string& str);
 
 #endif

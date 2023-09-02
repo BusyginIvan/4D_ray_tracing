@@ -68,3 +68,10 @@ float Properties::getFloat(const string& key) {
     error("Error! Cannot parse float value of property \"" + key + "\".");
   }
 }
+
+bool Properties::getBool(const string& key) {
+  string str = toLowerCase(getString(key));
+  if (str == "true") return true;
+  if (str == "false") return false;
+  error("Error! Cannot parse boolean value of property \"" + key + "\".");
+}

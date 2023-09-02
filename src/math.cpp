@@ -1,7 +1,6 @@
-#include <SFML/Graphics.hpp>
+#include "math.h"
 #include <cmath>
 
-using namespace sf::Glsl;
 using namespace std;
 
 Vec4 sum(const Vec4 v1, const Vec4 v2) { return {v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w}; }
@@ -13,4 +12,16 @@ Vec4 divVN(const Vec4 v, const float l) { return mulVN(v, 1 / l); }
 float dot(const Vec4 v1, const Vec4 v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w; }
 float mod(const Vec4 v) { return sqrt(dot(v, v)); }
 Vec4 normalize(const Vec4 v) { return divVN(v, mod(v)); }
+
 float min(const float a, const float b, const float c, const float d) { return min(min(a, b), min(c, d)); }
+
+void pullIntoRange(float& f, const float center, const float r) {
+  if (f < center - r) f = center - r;
+  if (f > center + r) f = center + r;
+}
+
+void normalizeAngle(float& angle) {
+  angle = remainder(angle, 2 * PI);
+  if (angle < -PI) angle += 2 * PI;
+  if (angle >  PI) angle -= 2 * PI;
+}
