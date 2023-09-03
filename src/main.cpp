@@ -24,12 +24,16 @@ unsigned
 
 static void initShader() {
   shader.loadFromFile(properties.getString("shader.filename"), Shader::Fragment);
+
   shader.setUniform(
     "light_to_color_conversion_coefficient",
     properties.getFloat("shader.light_to_color_conversion_coefficient")
   );
+
   shader.setUniform("samples", (int) properties.getUnsignedInt("shader.samples"));
   shader.setUniform("reflections_amount", (int) properties.getUnsignedInt("shader.reflections_amount"));
+
+  float mtrHeight = properties.getFloat("matrix_height");
   shader.setUniform("mtr_sizes", Vec2(mtrHeight * GOLDEN, mtrHeight));
 }
 
@@ -44,9 +48,11 @@ static void initText() {
   text.setPosition(15, 10);
 }
 
-int main() {
-  unsigned frameNumber = 1; // Номер кадра с тех пор, как камера неподвижна
+static int generateSeed(Clock& timer) {
+  return rand() ^ (rand() << 14) ^ (rand() << 18) ^ timer.getElapsedTime().asMicroseconds();
+}
 
+int main() {
   bool threeWindows = properties.getBool("show_additional_windows");
   ThreeWindowGroup* threeWindowGroup;
   SingleWindowGroup* singleWindowGroup;
@@ -61,11 +67,14 @@ int main() {
   }
   RenderWindow& mainRenderWindow = windowGroup->getMainWindow().renderWindow;
 
-  initControls(mainRenderWindow, frameNumber);
+  int seed = 0;
+  unsigned frameNumber = 1; // Номер кадра с тех пор, как камера неподвижна
+  const float focusToMtrDist = properties.getFloat("focus_to_matrix_distance");
+  initControls(mainRenderWindow, frameNumber, focusToMtrDist);
   initShader();
   initText();
-
   Clock timer;
+
   while (mainRenderWindow.isOpen())
   {
     Event event{};
@@ -73,12 +82,7 @@ int main() {
       handleEvent(event);
 
     if (mouseHidden) {
-      if (mouseJustHidden) {
-        timer.restart();
-        mouseJustHidden = false;
-      }
-
-      shader.setUniform("seed", rand());
+      seed ^= generateSeed(timer); shader.setUniform("seed", seed);
       shader.setUniform("part", 1.0f / frameNumber);
       if (frameNumber++ == 1) {
         shader.setUniform("focus", focus);
@@ -89,7 +93,12 @@ int main() {
 
       float seconds = timer.restart().asSeconds();
       move(seconds);
-      windowGroup->getMainWindow().drawFPS(seconds);
+
+      if (mouseJustHidden) {
+        mouseJustHidden = false;
+      } else {
+        windowGroup->getMainWindow().drawFPS(seconds);
+      }
 
       windowGroup->display();
     }

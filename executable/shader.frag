@@ -1,7 +1,11 @@
 #version 450
 
 const float PI = 3.14159265f;
-const float SMALL_FLOAT = 0.0003f; // Маленькая величина. Примерно равна 2^(-12).
+const float SMALL_FLOAT = 0.0003f; // Маленькая величина: примерно равна 2^(-12)
+
+// Переменная вынесена сюда, так как используется в том числе при генерации псевдорандомных чисел
+vec2 scr_coord; // Координата пикселя в окне (scr - screen)
+
 
 // Геометрические объекты
 struct line   { vec4 point, drct; };
@@ -47,33 +51,37 @@ vec4 redirect(vec4 vec, vec4 norm) {
 
 // Псевдорандом
 
-vec2 scr_coord;      // scr (screen) – экран. Координата пикселя в окне.
-uniform int seed;    // Рандомное число, получаемое извне для каждого кадра.
-uint rand_iter = 0;  // Для большей хаотичности каждое вычисление рандомного числа делается уникальным.
+uniform int seed; // Рандомное число, получаемое извне для каждого кадра
+uint rand_iter_seed = seed; // Для большей хаотичности каждое вычисление рандомного числа делается уникальным
 
 uint hash(uint x) {
-  rand_iter += 23652437;
-  x += rand_iter;
-  x += ( x << 10u );
-  x ^= ( x >>  6u );
-  x += ( x <<  3u );
-  x ^= ( x >> 11u );
-  x += ( x << 15u );
+  x += ( x << 10 );
+  x ^= ( x >>  6 );
+  x += ( x <<  3 );
+  x ^= ( x >> 11 );
+  x += ( x << 15 );
+  x ^= ( x >>  9 );
   return x;
 }
-uint hash(uvec2 v) { return hash(seed + v.x ^ (v.y << 8)); }
 
-float floatConstruct(uint m) {
-  const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
-  const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
-  m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
-  m |= ieeeOne;                          // Add fractional part to 1.0
-  float  f = uintBitsToFloat(m);         // Range [1:2]
-  return f - 1.0;                        // Range [0:1]
+uint hash(uvec2 v2, uint seed) {
+  rand_iter_seed += 0x79A010A9u;
+  return hash(v2.x ^ (v2.y << 9) ^ rand_iter_seed ^ seed);
 }
 
-// Псевдорандомное число
-float rand()  { return floatConstruct(hash(floatBitsToUint(scr_coord))); }
+float construct_float(uint m) {
+  const uint ieeeMantissa = 0x007FFFFFu;
+  const uint ieeeOne      = 0x3F800000u;
+  m &= ieeeMantissa;
+  m |= ieeeOne;
+  return uintBitsToFloat(m) - 1.0;
+}
+
+// Псевдорандомное число от 0 до 1
+float rand() {
+  uvec2 v2 = floatBitsToUint(scr_coord);
+  return construct_float(hash(v2, seed));
+}
 
 // Случайный исход
 bool rand_outcome(float probability) { return rand() > probability ? false : true; }
@@ -138,9 +146,12 @@ const intersection NOT_INTERSECT = intersection(false, 0, vec4(0), NULL_MATERIAL
 // Определение ближайшего пересечения
 intersection closest(intersection inter1, intersection inter2) {
   if (inter1.did_intersect) {
-    if (inter2.did_intersect) return inter1.dist < inter2.dist ? inter1 : inter2;
-    else return inter1;
-  } else return inter2.did_intersect ? inter2 : NOT_INTERSECT;
+    if (inter2.did_intersect)
+      return inter1.dist < inter2.dist ? inter1 : inter2;
+    else
+      return inter1;
+  } else
+    return inter2;
 }
 
 
@@ -440,14 +451,14 @@ vec3 trace(ray ray) {
     result_light += inter.material.color * inter.material.glow * unabsorbed_light_part; // Учёт свечения объекта
     unabsorbed_light_part *= inter.material.color; // Поглощение света
 
-    // Новая точка начала луча. С небольшим отступом, чтобы не попадать внутрь объекта.
+    // Новая точка начала луча: с небольшим отступом, чтобы не попадать внутрь объекта
     ray.point += ray.drct * inter.dist + inter.norm * SMALL_FLOAT;
 
     // Отражение или случайное направление луча
-    if (rand() > inter.material.refl_prob)
-      ray.drct = redirect(rand_drct(), inter.norm);
-    else
+    if (rand_outcome(inter.material.refl_prob))
       ray.drct = reflect(ray.drct, inter.norm);
+    else
+      ray.drct = redirect(rand_drct(), inter.norm);
   }
   // При достижении максимально числа отражений нового света не добавляется, получаются тени.
   return result_light;
@@ -464,7 +475,7 @@ uniform vec4 top_drct, right_drct; // Единичные векторы по н�
 
 // Изначальное направление полёта луча: от фокуса через точку на матрице
 vec4 ray_drct() {
-  vec2 mtr_coord = vec2((scr_coord.x * 2 - 1) * mtr_sizes.x, (1 - scr_coord.y * 2) * mtr_sizes.y);
+  vec2 mtr_coord = vec2((scr_coord.x - 0.5) * mtr_sizes.x, (0.5 - scr_coord.y) * mtr_sizes.y);
   vec4 ray_drct = vec_to_mtr + top_drct * mtr_coord.y + right_drct * mtr_coord.x;
   return normalize(ray_drct);
 }
@@ -492,7 +503,7 @@ void main() {
     light += trace(ray(focus, ray_drct));
   light /= samples;
 
-  // Смешиваем старый цвет с новым по пропорции.
+  // Смешиваем старый цвет с новым по пропорции
   vec3 new_color = light_to_color(light);
   vec3 old_color = texture(old_frame, scr_coord).rgb;
   gl_FragColor = vec4(mix(old_color, new_color, part), 1);

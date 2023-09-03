@@ -7,7 +7,6 @@ using namespace sf;
 using namespace sf::Glsl;
 using namespace std;
 
-float focusToMtrDist, mtrHeight;
 bool mouseHidden = false, mouseJustHidden = false;
 
 static RenderWindow* window;
@@ -120,7 +119,7 @@ void move(const float seconds) {
 // Инициализация
 static unsigned halfW, halfH; // Половины ширины и высоты основного окна
 
-void initControls(RenderWindow& mainWindow, unsigned& frameNumberCounter) {
+void initControls(RenderWindow& mainWindow, unsigned& frameNumberCounter, const float focusToMtrDist) {
   window = &mainWindow;
   halfW = window->getSize().x / 2; halfH = window->getSize().y / 2;
   frameNumber = &frameNumberCounter;
@@ -130,9 +129,6 @@ void initControls(RenderWindow& mainWindow, unsigned& frameNumberCounter) {
   wheelSensitivity = properties.getFloat("wheel_sensitivity");
 
   movementSpeed = properties.getFloat("movement_speed");
-
-  focusToMtrDist = properties.getFloat("focus_to_matrix_distance");
-  mtrHeight = properties.getFloat("matrix_height");
 
   focus = Vec4(
     properties.getFloat("initial_camera_position.x"),
