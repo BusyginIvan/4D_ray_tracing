@@ -1,4 +1,4 @@
-#version 450
+#version 330
 
 const float PI = 3.14159265f;
 const float SMALL_FLOAT = 0.0003f; // Маленькая величина: примерно равна 2^(-12)
@@ -51,8 +51,11 @@ vec4 redirect(vec4 vec, vec4 norm) {
 
 // Псевдорандом
 
-uniform int seed; // Рандомное число, получаемое извне для каждого кадра
-uint rand_iter_seed = seed; // Для большей хаотичности каждое вычисление рандомного числа делается уникальным
+// Рандомное число, получаемое извне для каждого кадра
+uniform int seed;
+uint uint_seed = uint(seed);
+// Для большей хаотичности каждое вычисление рандомного числа делается уникальным
+uint rand_iter_seed = uint_seed;
 
 uint hash(uint x) {
   x += ( x << 10 );
@@ -64,23 +67,20 @@ uint hash(uint x) {
   return x;
 }
 
-uint hash(uvec2 v2, uint seed) {
+uint random_uint() {
   rand_iter_seed += 0x79A010A9u;
-  return hash(v2.x ^ (v2.y << 9) ^ rand_iter_seed ^ seed);
-}
-
-float construct_float(uint m) {
-  const uint ieeeMantissa = 0x007FFFFFu;
-  const uint ieeeOne      = 0x3F800000u;
-  m &= ieeeMantissa;
-  m |= ieeeOne;
-  return uintBitsToFloat(m) - 1.0;
+  uvec2 v2 = floatBitsToUint(scr_coord);
+  return hash(v2.x ^ (v2.y << 9) ^ rand_iter_seed ^ uint_seed);
 }
 
 // Псевдорандомное число от 0 до 1
 float rand() {
-  uvec2 v2 = floatBitsToUint(scr_coord);
-  return construct_float(hash(v2, seed));
+  uint bits = random_uint();
+  const uint ieeeMantissa = 0x007FFFFFu;
+  const uint ieeeOne      = 0x3F800000u;
+  bits &= ieeeMantissa;
+  bits |= ieeeOne;
+  return uintBitsToFloat(bits) - 1.0;
 }
 
 // Случайный исход
@@ -441,7 +441,7 @@ uniform int reflections_amount; // Максимальное число пере�
 vec3 trace(ray ray) {
   vec3 result_light = vec3(0);          // Свет, дошедший в сумме от источников
   vec3 unabsorbed_light_part = vec3(1); // Доли света, не поглощённого при переотражениях луча
-  for (uint i = 0; i <= reflections_amount; i++) {
+  for (int i = 0; i <= reflections_amount; i++) {
     intersection inter = find_intersection(ray);
 
     if (!inter.did_intersect) {
@@ -499,7 +499,7 @@ void main() {
 
   vec3 light = vec3(0);
   vec4 ray_drct = ray_drct();
-  for (uint i = 0; i < samples; i++)
+  for (int i = 0; i < samples; i++)
     light += trace(ray(focus, ray_drct));
   light /= samples;
 
