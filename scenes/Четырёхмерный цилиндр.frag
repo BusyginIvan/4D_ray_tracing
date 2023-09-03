@@ -30,9 +30,9 @@ intersection find_intersection(ray ray) {
   intersection inter = NOT_INTERSECT;
   
   for (int i = 0; i < spaces.length(); i++)
-    inter = closest(inter, space_intersection(spaces[i], ray));
+    inter = closest(space_intersection(spaces[i], ray), inter);
   
-  inter = closest(inter, cylinders_union_intersection(cylinders_union, ray));
+  inter = closest(cylinders_union_intersection(cylinders_union, ray), inter);
   
   return inter;
 }

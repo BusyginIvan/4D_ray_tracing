@@ -1,7 +1,29 @@
 #version 330
 
+// Значения, передаваемые в шейдер нашей программой
+
+uniform int seed; // Рандомное число, получаемое извне для каждого кадра
+
+uniform int reflections_amount; // Максимальное число переотражений
+uniform int samples; // Число запускаемых для каждой клетки экрана лучей
+
+uniform float light_to_color_conversion_coefficient; // Чем больше эта константа, тем будет светлее
+
+uniform vec2 resolution;     // Ширина и высота экрана (окна) в пикселях
+uniform sampler2D old_frame; // Информация о предыдущем кадре
+uniform float part;          // Доля текущего кадра в результирующем изображении
+
+// mtr (matrix) – матрица, как у фотоаппарата; виртуальное представление нашего экрана в пространстве
+uniform vec2 mtr_sizes; // Ширина и высота матрицы в единицах пространства сцены
+uniform vec4 focus; // Фокус – точка схождения лучей за матрицей: в фотоаппарате он перед матрицей, а у нас лучи от этой точки летят
+uniform vec4 vec_to_mtr; // Вектор от фокуса до середины матрицы
+uniform vec4 top_drct, right_drct; // Единичные векторы по направлению вверх и вправо для наблюдателя
+
+
+// Константы
 const float PI = 3.14159265f;
 const float SMALL_FLOAT = 0.0003f; // Маленькая величина: примерно равна 2^(-12)
+
 
 // Переменная вынесена сюда, так как используется в том числе при генерации псевдорандомных чисел
 vec2 scr_coord; // Координата пикселя в окне (scr - screen)
@@ -18,6 +40,7 @@ struct sphere { vec4 center; float r; };
 
 // Синус по косинусу или наоборот
 float cos_to_sin(float cos) { return sqrt(1 - cos * cos); }
+float sin_to_cos(float sin) { return sqrt(1 - sin * sin); }
 
 // Косинус угла между векторами
 float v_cos(vec4 v1, vec4 v2) {
@@ -28,7 +51,8 @@ float v_cos(vec4 v1, vec4 v2) {
 float angle(vec4 v1, vec4 v2) { return acos(v_cos(v1, v2)); }
 
 // Убираем из вектора составляющую, коллинеарную направлению
-vec4 vec_in_space(vec4 vec, vec4 drct) { return vec - drct * dot(vec, drct); }
+vec4 vec_in_space(vec4 vec, vec4 norm) { return vec - norm * dot(vec, norm); }
+vec4 vec_in_space(vec4 vec, space space) { return vec_in_space(vec, space.norm); }
 
 // Вектор от точки к прямой
 vec4 vec_to_line(vec4 point, line line) {
@@ -42,6 +66,19 @@ vec4 vec_to_space(vec4 point, space space) {
   return space.norm * dot(space.point - point, space.norm);
 }
 
+// Проецируем точку на просранство
+vec4 point_in_space(vec4 point_in_hyperspace, space space) {
+  return point_in_hyperspace + vec_to_space(point_in_hyperspace, space);
+}
+
+// Проецируем луч на пространство. Но поле drct перестаёт быть единичным вектором.
+ray ray_in_space(ray ray_in_hyperspace, space space) {
+  return ray(
+    point_in_space(ray_in_hyperspace.point, space),
+    vec_in_space(ray_in_hyperspace.drct, space)
+  );
+}
+
 // Отражение вектора, если он смотрит внутрь поверхности
 vec4 redirect(vec4 vec, vec4 norm) {
   float dot = dot(vec, norm);
@@ -51,8 +88,6 @@ vec4 redirect(vec4 vec, vec4 norm) {
 
 // Псевдорандом
 
-// Рандомное число, получаемое извне для каждого кадра
-uniform int seed;
 uint uint_seed = uint(seed);
 // Для большей хаотичности каждое вычисление рандомного числа делается уникальным
 uint rand_iter_seed = uint_seed;
@@ -145,13 +180,9 @@ const intersection NOT_INTERSECT = intersection(false, 0, vec4(0), NULL_MATERIAL
 
 // Определение ближайшего пересечения
 intersection closest(intersection inter1, intersection inter2) {
-  if (inter1.did_intersect) {
-    if (inter2.did_intersect)
-      return inter1.dist < inter2.dist ? inter1 : inter2;
-    else
-      return inter1;
-  } else
-    return inter2;
+  if (!inter1.did_intersect) return inter2;
+  if (!inter2.did_intersect) return inter1;
+  return inter1.dist < inter2.dist ? inter1 : inter2;
 }
 
 
@@ -166,13 +197,18 @@ struct visible_sphere {
 // Обозначения: o - центр сферы, p - ray.point, a - точка пересечения.
 intersection sphere_intersection(visible_sphere sphere, ray ray, bool outer) {
   vec4 vec_po = sphere.figure.center - ray.point;
-  float dot_pord = dot(vec_po, ray.drct);
   float len_po = length(vec_po);
   float r = sphere.figure.r;
-  if (len_po >= r && dot_pord < 0) return NOT_INTERSECT;
-  float cos_opa = dot_pord / len_po;
-  if (cos_opa > 1) cos_opa = 1; // Бывает, что из-за неточности вычислений получается чуть больше одного.
-  if (cos_opa < -1) cos_opa = -1;
+  float cos_opa;
+  if (len_po < SMALL_FLOAT) {
+    cos_opa = 0;
+  } else {
+    float dot_pord = dot(vec_po, ray.drct);
+    if (len_po >= r && dot_pord < 0) return NOT_INTERSECT;
+    cos_opa = dot_pord / len_po;
+    if (cos_opa > 1) cos_opa = 1;
+    if (cos_opa < -1) cos_opa = -1;
+  }
   float angle_opa = acos(cos_opa);
   float sin_oap = len_po * sin(angle_opa) / r;
   if (sin_oap >= 1) return NOT_INTERSECT;
@@ -197,8 +233,8 @@ intersection space_intersection(visible_space space, ray ray) {
   vec4 vec_v = space.figure.point - ray.point;
   float dot_vn = dot(vec_v, space.figure.norm);   // Расстояние до пространства (со знаком)
   vec4 drct_h = space.figure.norm * sign(dot_vn); // Единичный вектор в сторону пространства
-  float cos_dh = dot(drct_h, ray.drct);  // Косинус угла между этим вектором и лучём
-  if (cos_dh <= 0) return NOT_INTERSECT; // Если луч летит от пространства, пересечения нет
+  float cos_dh = dot(drct_h, ray.drct);           // Косинус угла между этим вектором и лучём
+  if (cos_dh < SMALL_FLOAT) return NOT_INTERSECT; // Если луч летит от пространства, пересечения нет
   float dist = abs(dot_vn) / cos_dh;
   return intersection(true, dist, -drct_h, space.material);
 }
@@ -214,35 +250,29 @@ struct visible_cylinder {
 // Пересечение с цилиндром
 // outer: если false, луч, летящий снаружи, пролетит переднюю стенку насквозь.
 intersection cylinder_intersection(visible_cylinder cylinder, ray ray_in_hyperspace, bool outer) {
-  ray ray_in_space = ray(
-    ray_in_hyperspace.point + vec_to_space(ray_in_hyperspace.point, space(cylinder.point, cylinder.axis1)),
-    vec_in_space(ray_in_hyperspace.drct, cylinder.axis1)
-  );
-  if (length(ray_in_space.drct) == 0) return NOT_INTERSECT;
+  ray ray_in_space1 = ray_in_space(ray_in_hyperspace, space(cylinder.point, cylinder.axis1));
+  if (length(ray_in_space1.drct) < SMALL_FLOAT) return NOT_INTERSECT;
 
-  vec4 vec_to_plane = vec_to_space(ray_in_space.point, space(cylinder.point, cylinder.axis2));
-  ray ray_in_plane = ray(
-    ray_in_space.point + vec_to_plane,
-    vec_in_space(ray_in_space.drct, cylinder.axis2)
-  );
-  float length_drct_in_plane = length(ray_in_plane.drct);
-  if (length_drct_in_plane == 0) return NOT_INTERSECT;
-  ray_in_plane.drct = ray_in_plane.drct / length_drct_in_plane;
+  ray ray_in_plane12 = ray_in_space(ray_in_space1, space(cylinder.point, cylinder.axis2));
+  float drct_in_plane_length = length(ray_in_plane12.drct);
+  if (drct_in_plane_length < SMALL_FLOAT) return NOT_INTERSECT;
+  ray_in_plane12.drct /= drct_in_plane_length;
 
   intersection inter = sphere_intersection(
     visible_sphere(sphere(cylinder.point, cylinder.r), cylinder.material),
-    ray_in_plane, outer
+    ray_in_plane12,
+    outer
   );
-  inter.dist /= length_drct_in_plane;
+  inter.dist /= drct_in_plane_length;
   return inter;
 }
 
 // Расстояние до плоскости осей цилиндра
 float dist_to_axes_plane(float dist, ray ray, visible_cylinder cylinder) {
   vec4 point_in_hyperspace = ray.point + ray.drct * dist;
-  vec4 point_in_space = point_in_hyperspace + vec_to_space(point_in_hyperspace, space(cylinder.point, cylinder.axis1));
-  vec4 point_in_plane = point_in_space + vec_to_space(point_in_space, space(cylinder.point, cylinder.axis2));
-  return length(cylinder.point - point_in_plane);
+  vec4 point_in_space1 = point_in_space(point_in_hyperspace, space(cylinder.point, cylinder.axis1));
+  vec4 point_in_plane12 = point_in_space(point_in_space1, space(cylinder.point, cylinder.axis2));
+  return length(cylinder.point - point_in_plane12);
 }
 
 
@@ -289,8 +319,8 @@ intersection tigers_face_intersection(
   visible_cylinder cyl, visible_cylinder outer_cyl, visible_cylinder inner_cyl, ray ray, bool outer
 ) {
   intersection inter = cylinder_intersection(cyl, ray, outer);
-  if (dist_to_axes_plane(inter.dist, ray, outer_cyl) > outer_cyl.r) inter = NOT_INTERSECT;
-  if (dist_to_axes_plane(inter.dist, ray, inner_cyl) < inner_cyl.r) inter = NOT_INTERSECT;
+  if (dist_to_axes_plane(inter.dist, ray, outer_cyl) > outer_cyl.r) return NOT_INTERSECT;
+  if (dist_to_axes_plane(inter.dist, ray, inner_cyl) < inner_cyl.r) return NOT_INTERSECT;
   return inter;
 }
 
@@ -348,7 +378,7 @@ visible_hypercube init_hypercube(
   material mxp, material myp, material mzp, material mwp,
   material mxn, material myn, material mzn, material mwn
 ) {
-  return visible_hypercube(visible_cube[8](
+  visible_cube[8] cubes = visible_cube[8](
     visible_cube(space(point + x * r,  x), y, z, w, r, mxp),
     visible_cube(space(point + y * r,  y), x, z, w, r, myp),
     visible_cube(space(point + z * r,  z), x, y, w, r, mzp),
@@ -357,7 +387,9 @@ visible_hypercube init_hypercube(
     visible_cube(space(point - y * r, -y), x, z, w, r, myn),
     visible_cube(space(point - z * r, -z), x, y, w, r, mzn),
     visible_cube(space(point - w * r, -w), x, y, z, r, mwn)
-  ));
+  );
+
+  return visible_hypercube(cubes);
 }
 
 intersection hypercube_intersection(visible_hypercube hypercube, ray ray) {
@@ -404,17 +436,17 @@ intersection find_intersection(ray ray) {
   intersection inter = NOT_INTERSECT;
   
   for (int i = 0; i < spaces.length(); i++)
-    inter = closest(inter, space_intersection(spaces[i], ray));
+    inter = closest(space_intersection(spaces[i], ray), inter);
   
   //for (int i = 0; i < spheres.length(); i++)
-  //  inter = closest(inter, sphere_intersection(spheres[i], ray, true));
+  //  inter = closest(sphere_intersection(spheres[i], ray, true), inter);
   
   //for (int i = 0; i < cylinders.length(); i++)
-  //  inter = closest(inter, cylinder_intersection(cylinders[i], ray, true));
+  //  inter = closest(cylinder_intersection(cylinders[i], ray, true), inter);
   
-  //inter = closest(inter, cylinders_union_intersection(cylinders_union, ray));
-  //inter = closest(inter, hypercube_intersection(hypercube, ray));
-  inter = closest(inter, tiger_intersection(tiger, ray));
+  //inter = closest(cylinders_union_intersection(cylinders_union, ray), inter);
+  //inter = closest(hypercube_intersection(hypercube, ray), inter);
+  inter = closest(tiger_intersection(tiger, ray), inter);
   
   return inter;
 }
@@ -437,7 +469,6 @@ vec3 final_light(vec4 drct) {
 }
 
 // Трассировка луча. Возвращает свет, прилетающий по лучу.
-uniform int reflections_amount; // Максимальное число переотражений
 vec3 trace(ray ray) {
   vec3 result_light = vec3(0);          // Свет, дошедший в сумме от источников
   vec3 unabsorbed_light_part = vec3(1); // Доли света, не поглощённого при переотражениях луча
@@ -467,12 +498,6 @@ vec3 trace(ray ray) {
 
 // Главный метод, основная работа c экраном и матрицей
 
-// mtr (matrix) – матрица, как у фотоаппарата; виртуальное представление нашего экрана в пространстве.
-uniform vec2 mtr_sizes; // Ширина и высота матрицы в единицах пространства сцены
-uniform vec4 focus; // Фокус – точка схождения лучей за матрицей. В фотоаппарате он перед матрицей, а у нас лучи от этой точки летят.
-uniform vec4 vec_to_mtr;           // Вектор от фокуса до середины матрицы.
-uniform vec4 top_drct, right_drct; // Единичные векторы по направлению вверх и вправо для наблюдателя.
-
 // Изначальное направление полёта луча: от фокуса через точку на матрице
 vec4 ray_drct() {
   vec2 mtr_coord = vec2((scr_coord.x - 0.5) * mtr_sizes.x, (0.5 - scr_coord.y) * mtr_sizes.y);
@@ -482,15 +507,9 @@ vec4 ray_drct() {
 
 // Преобразование света в цвет для пикселя
 // Свет может быть от нуля до бесконечности, а цвет лишь от нуля до единицы.
-uniform float light_to_color_conversion_coefficient; // Чем больше эта константа, тем будет светлее.
 vec3 light_to_color(vec3 light) {
   return 1 - 1 / (light_to_color_conversion_coefficient * light + 1);
 }
-
-uniform vec2 resolution;     // Ширина и высота экрана (окна) в пикселях
-uniform sampler2D old_frame; // Информация о предыдущем кадре
-uniform float part;          // Доля текущего кадра в результирующем изображении
-uniform int samples;         // Число запускаемых для каждой клетки экрана лучей
 
 void main() {
   // Координата на экране

@@ -21,10 +21,10 @@ intersection find_intersection(ray ray) {
   intersection inter = NOT_INTERSECT;
   
   for (int i = 0; i < spaces.length(); i++)
-    inter = closest(inter, space_intersection(spaces[i], ray));
+    inter = closest(space_intersection(spaces[i], ray), inter);
   
   for (int i = 0; i < spheres.length(); i++)
-    inter = closest(inter, sphere_intersection(spheres[i], ray, true));
+    inter = closest(sphere_intersection(spheres[i], ray, true), inter);
   
   return inter;
 }
