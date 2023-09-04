@@ -119,7 +119,7 @@ void move(const float seconds) {
 // Инициализация
 static unsigned halfW, halfH; // Половины ширины и высоты основного окна
 
-void initControls(RenderWindow& mainWindow, unsigned& frameNumberCounter, const float focusToMtrDist) {
+void initControls(RenderWindow& mainWindow, unsigned& frameNumberCounter) {
   window = &mainWindow;
   halfW = window->getSize().x / 2; halfH = window->getSize().y / 2;
   frameNumber = &frameNumberCounter;
@@ -131,16 +131,16 @@ void initControls(RenderWindow& mainWindow, unsigned& frameNumberCounter, const 
   movementSpeed = properties.getFloat("movement_speed");
 
   focus = Vec4(
-    properties.getFloat("initial_camera_position.x"),
-    properties.getFloat("initial_camera_position.y") - focusToMtrDist,
-    properties.getFloat("initial_camera_position.z"),
-    properties.getFloat("initial_camera_position.w")
+    properties.getFloat("camera.initial_position.x"),
+    properties.getFloat("camera.initial_position.y"),
+    properties.getFloat("camera.initial_position.z"),
+    properties.getFloat("camera.initial_position.w")
   );
 
   sphOrientation = {
-    .fi = properties.getFloat("initial_camera_position.fi"),
-    .te = properties.getFloat("initial_camera_position.te"),
-    .psi = properties.getFloat("initial_camera_position.psi"),
+    .fi  = properties.getFloat("camera.initial_position.fi"),
+    .te  = properties.getFloat("camera.initial_position.te"),
+    .psi = properties.getFloat("camera.initial_position.psi"),
   };
 
   if (properties.getBool("constrain_psi_range")) {

@@ -9,15 +9,32 @@
  window.additional.width = 600    # Ширина дополнительного окна в пикселях
  window.additional.cell_size = 10 # Размер клетки в дополнительном окне
 
-# Параметры шейдера, трассировки луча
- shader.filename = shader.frag
- shader.light_to_color_conversion_coefficient = 1.0 # Чем больше эта константа, тем будет светлее
- shader.samples = 110          # Число запускаемых для каждой клетки экрана лучей
- shader.reflections_amount = 4 # Максимальное число переотражений луча
+# Трассировка луча
+ ray_tracing.samples = 100          # Число запускаемых для каждой клетки экрана лучей
+ ray_tracing.reflections_amount = 4 # Максимальное число переотражений луча
+ # Отступ от поверхности при отражении
+ # Нужен, чтобы луч случайно не прошёл сквозь поверхность
+ ray_tracing.small_indent = 0.005
+
+# Виртуальная камера
+ # Параметры, влияющие на масштаб объектов сцены и угол обзора
+  camera.focus_to_matrix_distance = 1.5 # Расстояние от фокуса до матрицы
+  camera.matrix_height = 2.0            # Половина высоты матрицы
+
+ # Начальное положение
+  camera.initial_position.x = 0.0
+  camera.initial_position.y = -2.0
+  camera.initial_position.z = 0.0
+  camera.initial_position.w = 0.0
+
+ # Начальные углы поворота в градусах
+  camera.initial_position.fi  = 0.0
+  camera.initial_position.te  = 0.0
+  camera.initial_position.psi = 0.0
 
 # Вращение камерой и передвижение
- # Толщина границы у окна, в пределах которой курсор просто телепортируется в центр.
- # Это нужно, чтобы не было резкого скачка, когда мышка входит в окно.
+ # Толщина границы у окна, в пределах которой курсор просто телепортируется в центр
+ # Это нужно, чтобы не было резкого скачка, когда мышка входит в окно
  mouse_border_width = 15
 
  # Запретить поворот камеры вокруг плоскости XY более чем на 45 градусов от начального её положения
@@ -30,22 +47,7 @@
  wheel_sensitivity = 0.1
 
  # Константа, позволяющая регулировать скорость перемещения камеры
- movement_speed = 2.0
-
-# Параметры виртуальной камеры: влияют на масштаб объектов сцены и угол обзора
- focus_to_matrix_distance = 1.5 # Расстояние от фокуса до матрицы
- matrix_height = 2.0            # Половина высоты матрицы
-
-# Начальное положение камеры
- initial_camera_position.x = 0.0
- initial_camera_position.y = 0.0
- initial_camera_position.z = 0.0
- initial_camera_position.w = 0.0
-
-# Начальные углы поворота камеры в радианах
- initial_camera_position.fi  = 0.0
- initial_camera_position.te  = 0.0
- initial_camera_position.psi = 0.0
+ movement_speed = 3.0
 
 # Параметры текста: используется для отображения FPS
  text.font.filename = font.ttf
@@ -53,6 +55,8 @@
  text.outline_thickness = 2.0
 
 # Разное
- max_fps = 60
+ light_to_color_conversion_coefficient = 1.0 # Чем больше эта константа, тем будет светлее
+ max_fps = 60             # На случай, если вдруг станет жалко свой компьютер
  window_title_height = 37 # Высота шапки окон Windows (полоски сверху) в пикселях
  task_bar_height = 60     # Высота панели задач Windows в пикселях
+ shader_filename = shader.frag

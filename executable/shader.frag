@@ -3,15 +3,14 @@
 // Значения, передаваемые в шейдер нашей программой
 
 uniform int seed; // Рандомное число, получаемое извне для каждого кадра
-
-uniform int reflections_amount; // Максимальное число переотражений
 uniform int samples; // Число запускаемых для каждой клетки экрана лучей
-
-uniform float light_to_color_conversion_coefficient; // Чем больше эта константа, тем будет светлее
+uniform int reflections_amount; // Максимальное число переотражений
+uniform float small_indent; // Отступ от поверхности при отражении
 
 uniform vec2 resolution;     // Ширина и высота экрана (окна) в пикселях
 uniform sampler2D old_frame; // Информация о предыдущем кадре
 uniform float part;          // Доля текущего кадра в результирующем изображении
+uniform float light_to_color_conversion_coefficient; // Чем больше эта константа, тем будет светлее
 
 // mtr (matrix) – матрица, как у фотоаппарата; виртуальное представление нашего экрана в пространстве
 uniform vec2 mtr_sizes; // Ширина и высота матрицы в единицах пространства сцены
@@ -483,7 +482,7 @@ vec3 trace(ray ray) {
     unabsorbed_light_part *= inter.material.color; // Поглощение света
 
     // Новая точка начала луча: с небольшим отступом, чтобы не попадать внутрь объекта
-    ray.point += ray.drct * inter.dist + inter.norm * SMALL_FLOAT;
+    ray.point += ray.drct * inter.dist + inter.norm * small_indent;
 
     // Отражение или случайное направление луча
     if (rand_outcome(inter.material.refl_prob))

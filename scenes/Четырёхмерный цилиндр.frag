@@ -10,13 +10,13 @@ const visible_space[spaces_count] spaces = visible_space[spaces_count](
 
 visible_cylinders_union cylinders_union = visible_cylinders_union(
   visible_cylinder(
-    vec4(-1, 2, 0, 0),
+    vec4(0, 2, 0, 0),
     vec4(1, 0, 0, 0), vec4(0, 0, 0, 1),
     1.0,
     material(0, 0, vec3(1.0, 0.0, 0.0))
   ),
   visible_cylinder(
-    vec4(-1, 2, 0, 0),
+    vec4(0, 2, 0, 0),
     vec4(0, 0, 1, 0), vec4(0, 1, 0, 0),
     1.0,
     material(0, 0, vec3(0.07, 0.67, 0.25))

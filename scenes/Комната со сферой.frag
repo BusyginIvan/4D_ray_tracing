@@ -1,21 +1,23 @@
 // Инициализация объектов сцены
 
+const float size = 3.5;
+
 const uint spaces_count = 8;
 const visible_space[spaces_count] spaces = visible_space[spaces_count](
-  visible_space(space(vec4( 3, 0, 0, 0), vec4(1, 0, 0, 0)), material(0, 0, vec3(0.44, 0.04, 0.67))),
-  visible_space(space(vec4(-3, 0, 0, 0), vec4(1, 0, 0, 0)), material(0, 0, vec3(1.0 , 1.0 , 0.0 ))),
-  visible_space(space(vec4( 0, 3, 0, 0), vec4(0, 1, 0, 0)), material(0, 0, vec3(1.0 , 0.0 , 0.0 ))),
-  visible_space(space(vec4( 0,-3, 0, 0), vec4(0, 1, 0, 0)), material(0, 0, vec3(0.0 , 0.8 , 0.0 ))),
-  visible_space(space(vec4( 0, 0, 3, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1.0 , 1.0 , 1.0 ))),
-  visible_space(space(vec4( 0, 0,-3, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1.0 , 1.0 , 1.0 ))),
-  visible_space(space(vec4( 0, 0, 0, 3), vec4(0, 0, 0, 1)), material(0, 0, vec3(1.0 , 0.67, 0.0 ))),
-  visible_space(space(vec4( 0, 0, 0,-3), vec4(0, 0, 0, 1)), material(0, 0, vec3(0.07, 0.25, 0.67)))
+  visible_space(space(vec4( size, 0, 0, 0), vec4(1, 0, 0, 0)), material(0, 0, vec3(0.44, 0.04, 0.67))),
+  visible_space(space(vec4(-size, 0, 0, 0), vec4(1, 0, 0, 0)), material(0, 0, vec3(1.0 , 1.0 , 0.0 ))),
+  visible_space(space(vec4( 0, size, 0, 0), vec4(0, 1, 0, 0)), material(0, 0, vec3(1.0 , 0.0 , 0.0 ))),
+  visible_space(space(vec4( 0,-size, 0, 0), vec4(0, 1, 0, 0)), material(0, 0, vec3(0.0 , 0.8 , 0.0 ))),
+  visible_space(space(vec4( 0, 0, size, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1.0 , 1.0 , 1.0 ))),
+  visible_space(space(vec4( 0, 0,-size, 0), vec4(0, 0, 1, 0)), material(0, 0, vec3(1.0 , 1.0 , 1.0 ))),
+  visible_space(space(vec4( 0, 0, 0, size), vec4(0, 0, 0, 1)), material(0, 0, vec3(1.0 , 0.67, 0.0 ))),
+  visible_space(space(vec4( 0, 0, 0,-size), vec4(0, 0, 0, 1)), material(0, 0, vec3(0.07, 0.25, 0.67)))
 );
 
 const uint spheres_count = 2;
 const visible_sphere[spheres_count] spheres = visible_sphere[spheres_count](
-  visible_sphere(sphere(vec4(0, 0, -1, 0), 1.0), material( 0, 0, vec3(1, 1, 1))),
-  visible_sphere(sphere(vec4(0, 0,  3, 0), 0.8), material(90, 0, vec3(1, 1, 1)))
+  visible_sphere(sphere(vec4(0, 0,-size/5, 0), 0.35 * size), material(  0, 0, vec3(1, 1, 1))),
+  visible_sphere(sphere(vec4(0, 0, size  , 0), 0.25 * size), material(200, 0, vec3(1, 1, 1)))
 );
 
 

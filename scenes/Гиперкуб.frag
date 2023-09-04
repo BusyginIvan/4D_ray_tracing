@@ -9,7 +9,7 @@ const visible_space[spaces_count] spaces = visible_space[spaces_count](
 );
 
 visible_hypercube hypercube = init_hypercube(
-  vec4(0, 4, 0, 0),
+  vec4(0, 2, 0, 0),
   vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), vec4(0, 0, 0, 1),
   1,
   material(0, 0, vec3(0.72, 0.07, 0.20)),

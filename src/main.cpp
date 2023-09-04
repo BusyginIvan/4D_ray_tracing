@@ -23,17 +23,18 @@ unsigned
   screenHeight = VideoMode::getDesktopMode().height - taskBarHeight - winTitleHeight;
 
 static void initShader() {
-  shader.loadFromFile(properties.getString("shader.filename"), Shader::Fragment);
+  shader.loadFromFile(properties.getString("shader_filename"), Shader::Fragment);
+
+  shader.setUniform("samples", (int) properties.getUnsignedInt("ray_tracing.samples"));
+  shader.setUniform("reflections_amount", (int) properties.getUnsignedInt("ray_tracing.reflections_amount"));
+  shader.setUniform("small_indent", properties.getFloat("ray_tracing.small_indent"));
 
   shader.setUniform(
     "light_to_color_conversion_coefficient",
-    properties.getFloat("shader.light_to_color_conversion_coefficient")
+    properties.getFloat("light_to_color_conversion_coefficient")
   );
 
-  shader.setUniform("samples", (int) properties.getUnsignedInt("shader.samples"));
-  shader.setUniform("reflections_amount", (int) properties.getUnsignedInt("shader.reflections_amount"));
-
-  float mtrHeight = properties.getFloat("matrix_height");
+  float mtrHeight = properties.getFloat("camera.matrix_height");
   shader.setUniform("mtr_sizes", Vec2(mtrHeight * GOLDEN, mtrHeight));
 }
 
@@ -69,8 +70,8 @@ int main() {
 
   int seed = 0;
   unsigned frameNumber = 1; // Номер кадра с тех пор, как камера неподвижна
-  const float focusToMtrDist = properties.getFloat("focus_to_matrix_distance");
-  initControls(mainRenderWindow, frameNumber, focusToMtrDist);
+  const float focusToMtrDist = properties.getFloat("camera.focus_to_matrix_distance");
+  initControls(mainRenderWindow, frameNumber);
   initShader();
   initText();
   Clock timer;
