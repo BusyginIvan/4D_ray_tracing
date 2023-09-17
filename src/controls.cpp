@@ -22,21 +22,39 @@ static unsigned maxMouseOffset;
 
 // Углы, задающие ориентацию камеры (наблюдателя)
 // sph (sphere) в названии символизирует сферическую систему координат.
-static struct {
-  float fi, te, psi, startPsi;
-  void (*psiNormalization)(float&);
+struct SphOrientation {
+  float fi, te, psi, psiRangeCenter, psiRangeRadius;
+  bool constrainPsiRange;
 
-  void initStartPsi() { startPsi = psi; normalizeAngle(startPsi); }
+  void init(const string& paramsPrefix) {
+    fi  = convertDegreesToRadians(props.getFloat(paramsPrefix + "fi" ));
+    te  = convertDegreesToRadians(props.getFloat(paramsPrefix + "te" ));
+    psi = convertDegreesToRadians(props.getFloat(paramsPrefix + "psi"));
+    constrainPsiRange = props.getBool("constrain_psi_range");
+    if (constrainPsiRange) {
+      psiRangeCenter = psi; normalizeAngle(psiRangeCenter);
+      psiRangeRadius = convertDegreesToRadians(props.getFloat("psi_range_radius"));
+    }
+    normalize();
+  }
 
   void normalizeFi() { normalizeAngle(fi); }
   void normalizeTe() { pullIntoRange(te, 0, PI / 2); }
-  void normalizePsi() { psiNormalization(psi); }
+  void normalizePsi() {
+    if (constrainPsiRange) {
+      pullIntoRange(psi, psiRangeCenter, psiRangeRadius);
+    } else {
+      normalizeAngle(psi);
+    }
+  }
   void normalize() { normalizeFi(); normalizeTe(); normalizePsi(); }
 
   void changeFi (const float delta) { fi  += delta; normalizeFi();  }
   void changeTe (const float delta) { te  += delta; normalizeTe();  }
   void changePsi(const float delta) { psi += delta; normalizePsi(); }
-} sphOrientation;
+};
+
+static SphOrientation sphOrientation;
 
 // Единичные векторы, характеризующие ориентацию наблюдателя: куда он смотрит, где у него право, верх...
 // Вычисляется по sphOrientation.
@@ -60,7 +78,7 @@ void Orientation::update() {
   rotate(sphOrientation.psi, &top, &w_drct);
   verticalTop = top;
 
-  rotate(sphOrientation.fi, &right, &forward);
+  rotate(sphOrientation.fi, &forward, &right);
   horizontalForward = forward;
   horizontalRight = right;
 
@@ -124,35 +142,19 @@ void initControls(RenderWindow& mainWindow, unsigned& frameNumberCounter) {
   halfW = window->getSize().x / 2; halfH = window->getSize().y / 2;
   frameNumber = &frameNumberCounter;
 
-  maxMouseOffset = max(min(halfW, halfH) - properties.getUnsignedInt("mouse_border_width"), 50u);
-  mouseSensitivity = properties.getFloat("mouse_sensitivity");
-  wheelSensitivity = properties.getFloat("wheel_sensitivity");
+  maxMouseOffset = max(min(halfW, halfH) - props.getUnsignedInt("mouse_border_width"), 50u);
+  mouseSensitivity = props.getFloat("mouse_sensitivity");
+  wheelSensitivity = props.getFloat("wheel_sensitivity");
+  movementSpeed = props.getFloat("movement_speed");
 
-  movementSpeed = properties.getFloat("movement_speed");
-
+  string prefix = "camera.initial_position.";
   focus = Vec4(
-    properties.getFloat("camera.initial_position.x"),
-    properties.getFloat("camera.initial_position.y"),
-    properties.getFloat("camera.initial_position.z"),
-    properties.getFloat("camera.initial_position.w")
+    props.getFloat(prefix + "x"),
+    props.getFloat(prefix + "y"),
+    props.getFloat(prefix + "z"),
+    props.getFloat(prefix + "w")
   );
-
-  sphOrientation = {
-    .fi  = properties.getFloat("camera.initial_position.fi"),
-    .te  = properties.getFloat("camera.initial_position.te"),
-    .psi = properties.getFloat("camera.initial_position.psi"),
-  };
-
-  if (properties.getBool("constrain_psi_range")) {
-    sphOrientation.initStartPsi();
-    sphOrientation.psiNormalization = [](float &psi) {
-      pullIntoRange(psi, sphOrientation.startPsi, PI / 4);
-    };
-  } else {
-    sphOrientation.psiNormalization = normalizeAngle;
-  }
-
-  sphOrientation.normalize();
+  sphOrientation.init(prefix);
   orientation.update();
 }
 
@@ -174,8 +176,8 @@ void handleEvent(Event event) {
         if (abs(dx) > maxMouseOffset || abs(dy) > maxMouseOffset)
           centerMouseCursor();
         else if (dx != 0 || dy != 0) {
-          sphOrientation.changeFi(-dx * mouseSensitivity);
-          sphOrientation.changeTe( dy * mouseSensitivity);
+          sphOrientation.changeFi(dx * mouseSensitivity);
+          sphOrientation.changeTe(dy * mouseSensitivity);
           orientation.update(); *frameNumber = 1;
           centerMouseCursor();
         }

@@ -21,6 +21,8 @@ Vec4 normalize(Vec4 v);
 float min(float a, float b, float c, float d);
 float min(float a, float b, float c);
 void pullIntoRange(float& f, float center, float r);
+
 void normalizeAngle(float& angle);
+float convertDegreesToRadians(const float degrees);
 
 #endif

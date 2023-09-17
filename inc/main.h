@@ -6,7 +6,7 @@
 
 using namespace sf;
 
-extern Properties properties;
+extern Properties props;
 extern Shader shader;
 extern Font font;
 extern Text text;

@@ -26,3 +26,4 @@ void normalizeAngle(float& angle) {
   if (angle < -PI) angle += 2 * PI;
   if (angle >  PI) angle -= 2 * PI;
 }
+float convertDegreesToRadians(const float degrees) { return degrees / 180 * PI; }

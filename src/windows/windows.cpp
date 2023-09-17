@@ -6,10 +6,10 @@
 WindowParameters::WindowParameters(const string& windowType, unsigned style) {
   this->windowType = windowType;
   this->style = style;
-  title = properties.getStringOrNull(fullPropertyName("title"));
-  width = properties.getUnsignedInt(fullPropertyName("width"));
+  title = props.getStringOrNull(fullPropertyName("title"));
+  width = props.getUnsignedInt(fullPropertyName("width"));
   height = width / GOLDEN;
-  cellSize = properties.getUnsignedInt(fullPropertyName("cell_size"));
+  cellSize = props.getUnsignedInt(fullPropertyName("cell_size"));
 }
 
 string WindowParameters::fullPropertyName(const string& propertyName) {
